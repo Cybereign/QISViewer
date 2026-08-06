@@ -343,7 +343,7 @@ function checkAllConfigsLoaded() {
     if (appConfig && personMap) {
         console.log('✅ 所有配置加载完成');
         updateProjectBadges();
-        autoLoadExcel();
+        ();
     }
 }
 
@@ -386,8 +386,8 @@ function getMatchedProfession(prof) {
 // ★★★ 自动加载 Excel ★★★
 // ============================================================
 function autoLoadExcel() {
-    var url = 'https://raw.githubusercontent.com/cybereign/QISViewer/main/data.xls';
-    fetch(url)
+    
+    fetch('data.xlsx')
         .then(function(res) {
             if (res.ok) {
                 return res.arrayBuffer().then(function(buffer) {
