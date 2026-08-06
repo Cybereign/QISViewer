@@ -1,19 +1,18 @@
-function applyDisplayConfig() {
-    var modules = displayConfig.modules || {};
-    var map = {
-        header: 'header',
-        statusBar: 'statusBar',
-        filterBar: 'filterBar',
-        kpiGrid: 'kpiGrid',
-        statsTable: 'statsWrapper',
-        targetChart: 'targetChartContainer',  // ★★★ 新增 ★★★
-        targetChart2: 'targetChartContainer2', // ★★★ 新增 ★★★
-        chartGrid: 'chartGrid',
-        tableWrapper: 'tableWrapper',
-        footerNote: 'footerNote',
-        fileUploadArea: 'fileUploadArea',
-        loadingIndicator: 'loadingIndicator',
-        errorMsg: 'errorMsg'
-    };
-    // ... 后续代码不变
+{
+  "name": "UI显示配置",
+  "description": "控制页面各模块的显示与隐藏，true=显示，false=隐藏（不占位）",
+  "modules": {
+    "header": true,
+    "statusBar": false,
+    "filterBar": true,
+    "kpiGrid": true,
+    "statsTable": true,
+    "targetChart": true,
+    "chartGrid": true,
+    "tableWrapper": true,
+    "footerNote": true,
+    "fileUploadArea": true,
+    "loadingIndicator": true,
+    "errorMsg": true
+  }
 }
