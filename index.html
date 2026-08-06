@@ -396,17 +396,18 @@ function autoLoadExcel() {
                     processWorkbook(wb, 'data.xlsx');
                 });
             } else {
-                return fetch('data.xls').then(function(res2) {
-                    if (res2.ok) {
-                        return res2.arrayBuffer().then(function(buffer) {
-                            console.log('✅ 自动加载 data.xls 成功');
-                            var wb = XLSX.read(buffer, { type: 'array' });
-                            processWorkbook(wb, 'data.xls');
-                        });
-                    } else {
-                        throw new Error('文件不存在');
-                    }
-                });
+                return fetch('data.xls', { cache: 'reload' })
+                    .then(function(res2) {
+                        if (res2.ok) {
+                            return res2.arrayBuffer().then(function(buffer) {
+                                console.log('✅ 自动加载 data.xls 成功');
+                                var wb = XLSX.read(buffer, { type: 'array' });
+                                processWorkbook(wb, 'data.xls');
+                            });
+                        } else {
+                            throw new Error('文件不存在');
+                        }
+                    });
             }
         })
         .catch(function() {
