@@ -391,7 +391,7 @@ function autoLoadExcel() {
         .then(function(res) {
             if (res.ok) {
                 return res.arrayBuffer().then(function(buffer) {
-                    console.log('✅ 自动加载 data.xls 成功 WHJ YES');
+                    console.log('✅ 自动加载 data.xls 成功 WHJ YES OK');
                     var wb = XLSX.read(buffer, { type: 'array' });
                     processWorkbook(wb, 'data.xls');
                 });
