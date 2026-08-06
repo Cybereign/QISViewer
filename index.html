@@ -386,7 +386,8 @@ function getMatchedProfession(prof) {
 // ★★★ 自动加载 Excel ★★★
 // ============================================================
 function autoLoadExcel() {
-    fetch('data.xlsx')
+    var url = 'https://raw.githubusercontent.com/cybereign/QISViewer/main/data.xls';
+    fetch(url)
         .then(function(res) {
             if (res.ok) {
                 return res.arrayBuffer().then(function(buffer) {
