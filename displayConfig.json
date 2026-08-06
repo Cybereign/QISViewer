@@ -1,0 +1,15 @@
+{
+  "name": "UI显示配置",
+  "modules": {
+    "header": true,
+    "statusBar": false,
+    "filterBar": true,
+    "kpiGrid": true,
+    "chartGrid": true,
+    "tableWrapper": true,
+    "footerNote": true,
+    "fileUploadArea": true,
+    "loadingIndicator": true,
+    "errorMsg": true
+  }
+}
