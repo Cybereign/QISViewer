@@ -220,10 +220,15 @@
             <div class="chart-card"><div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div><div id="chartGantt" class="chart-container" style="height:280px;"></div></div>
             <div class="chart-card"><div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div><div id="chartScore" class="chart-container"></div></div>
             <div class="chart-card"><div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div><div id="chartSource" class="chart-container"></div></div>
-            <!-- ★★★ 目标达成率图表 ★★★ -->
+            <!-- ★★★ 目标达成率图表1: DH1基础车 ★★★ -->
             <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> 目标达成率</div>
-                <div id="chartTarget" class="chart-container" style="height:280px;"></div>
+                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1基础车 目标达成率</div>
+                <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
+            </div>
+            <!-- ★★★ 目标达成率图表2: DH1长续航车 ★★★ -->
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1长续航车 目标达成率</div>
+                <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
             </div>
         </div>
 
@@ -789,27 +794,14 @@ function renderStatsTable(openData) {
 }
 
 // ============================================================
-// 目标达成率图表
+// ★★★ 目标达成率图表（按项目分别显示，按专业绘图）★★★
 // ============================================================
-function renderTargetChart(openData) {
-    var dom = document.getElementById('chartTarget');
-    if (!dom) return;
-    if (chartInstances['chartTarget']) { chartInstances['chartTarget'].dispose(); }
-
-    var chart = echarts.init(dom);
-    chartInstances['chartTarget'] = chart;
-
-    var stageConfig = appConfig.stageTarget || {};
-    var stages = stageConfig.stages || {};
+function renderTargetCharts(openData) {
+    var projects = appConfig.projectConfig.projects || [];
+    var stages = (appConfig.stageTarget || {}).stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
     
-    var projects = appConfig.projectConfig.projects || [];
-    
-    var categories = [];
-    var actualValues = [];
-    var targetValues = [];
-    var rateData = [];
-
+    // 为每个项目渲染一个图表
     for (var pi = 0; pi < projects.length; pi++) {
         var proj = projects[pi];
         var projectId = proj.id;
@@ -817,225 +809,200 @@ function renderTargetChart(openData) {
         var stageId = proj.stage || 'SG10';
         var stage = stages[stageId];
         
-        if (!stage) continue;
+        var domId = (pi === 0) ? 'chartTarget1' : 'chartTarget2';
+        var dom = document.getElementById(domId);
+        if (!dom) continue;
+        if (chartInstances[domId]) { chartInstances[domId].dispose(); }
         
+        var chart = echarts.init(dom);
+        chartInstances[domId] = chart;
+        
+        // 获取该项目的数据
         var projectData = openData.filter(function(d) { return d.projectId === projectId; });
-        if (projectData.length === 0) continue;
         
-        categories.push('📁 ' + projectName + ' (' + stageId + ')');
-        actualValues.push(0);
-        targetValues.push(0);
-        rateData.push(0);
+        var categories = [];
+        var actualValues = [];
+        var targetValues = [];
+        var rateValues = [];
+        
+        if (!stage || projectData.length === 0) {
+            chart.setOption({
+                title: {
+                    text: projectData.length === 0 ? '暂无数据' : '未配置阶段目标',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                }
+            });
+            continue;
+        }
         
         for (var ci = 0; ci < centerNames.length; ci++) {
             var cName = centerNames[ci];
             var cConfig = stage.centers[cName];
             if (!cConfig) continue;
             
+            var profs = cConfig.professions || {};
             var target = cConfig.target || 0;
             var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
-            var actual = 0;
-            for (var di = 0; di < centerData.length; di++) {
-                actual += centerData[di].swScore;
-            }
             
-            categories.push('  ' + cName.substring(0, 8));
-            actualValues.push(Math.round(actual * 10) / 10);
-            targetValues.push(target);
-            var rate = target > 0 ? (actual / target * 100) : 0;
-            rateData.push(Math.min(rate, 200));
-            
-            var profs = cConfig.professions || {};
+            // 计算各专业实际分值
             var profActuals = {};
             for (var profName in profs) {
                 if (profs.hasOwnProperty(profName)) {
                     var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
                     var profActual = 0;
-                    for (var pdi = 0; pdi < profData.length; pdi++) {
-                        profActual += profData[pdi].swScore;
+                    for (var di = 0; di < profData.length; di++) {
+                        profActual += profData[di].swScore;
                     }
                     profActuals[profName] = profActual;
                 }
             }
+            
+            // 按专业添加数据
             for (var profName2 in profs) {
                 if (profs.hasOwnProperty(profName2)) {
                     var ratio = profs[profName2] || 0;
                     var profTarget = target * ratio;
                     var profActual2 = profActuals[profName2] || 0;
-                    categories.push('    ├ ' + profName2);
+                    var displayName = cName.substring(0, 6) + '-' + profName2;
+                    categories.push(displayName);
                     actualValues.push(Math.round(profActual2 * 10) / 10);
                     targetValues.push(Math.round(profTarget * 10) / 10);
-                    var rate2 = profTarget > 0 ? (profActual2 / profTarget * 100) : 0;
-                    rateData.push(Math.min(rate2, 200));
+                    var rate = profTarget > 0 ? (profActual2 / profTarget * 100) : 0;
+                    rateValues.push(Math.round(rate));
                 }
             }
         }
-    }
-
-    if (categories.length <= projects.length) {
-        chart.setOption({
-            title: {
-                text: '暂无目标数据',
-                left: 'center',
-                top: 'center',
-                textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 400 }
+        
+        if (categories.length === 0) {
+            chart.setOption({
+                title: {
+                    text: '暂无专业数据',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                }
+            });
+            continue;
+        }
+        
+        // 构建柱状图颜色：实际>=目标用红色，实际<目标用绿色
+        var barColors = [];
+        for (var i = 0; i < actualValues.length; i++) {
+            if (actualValues[i] >= targetValues[i]) {
+                barColors.push('#ef4444');  // 红色：超出或等于目标
+            } else {
+                barColors.push('#10b981');  // 绿色：目标范围内
             }
+        }
+        
+        chart.setOption({
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: function(params) {
+                    var idx = params[0].dataIndex;
+                    var name = categories[idx] || '';
+                    var actual = actualValues[idx] || 0;
+                    var target = targetValues[idx] || 0;
+                    var rate = target > 0 ? (actual / target * 100).toFixed(1) : 0;
+                    var status = actual >= target ? '✅ 已达标' : '⚠️ 待提升';
+                    return '<strong>' + name + '</strong><br/>' +
+                           '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
+                           '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
+                           '达成率: <strong>' + rate + '%</strong><br/>' +
+                           '状态: ' + status;
+                }
+            },
+            legend: {
+                data: ['实际分值', '目标分值'],
+                bottom: 0,
+                icon: 'roundRect',
+                itemWidth: 12,
+                itemHeight: 8,
+                fontSize: 10
+            },
+            grid: {
+                left: '6%',
+                right: '8%',
+                top: '8%',
+                bottom: '22%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: categories,
+                axisLabel: {
+                    rotate: 30,
+                    fontSize: 8,
+                    interval: 0,
+                    width: 70,
+                    overflow: 'break'
+                }
+            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: '分值',
+                    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                    min: 0
+                }
+            ],
+            series: [
+                {
+                    name: '实际分值',
+                    type: 'bar',
+                    data: actualValues,
+                    barWidth: '35%',
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: function(params) {
+                            return barColors[params.dataIndex];
+                        }
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 8,
+                        fontWeight: 700,
+                        color: '#334155',
+                        formatter: function(params) {
+                            var idx = params.dataIndex;
+                            var rate = rateValues[idx] || 0;
+                            return rate + '%';
+                        }
+                    }
+                },
+                {
+                    name: '目标分值',
+                    type: 'bar',
+                    data: targetValues,
+                    barWidth: '35%',
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#94a3b8',
+                        opacity: 0.4
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 7,
+                        fontWeight: 600,
+                        color: '#94a3b8',
+                        formatter: function(params) {
+                            return params.value.toFixed(1);
+                        }
+                    }
+                }
+            ]
         });
+        
         var resizeHandler = function() { chart.resize(); };
         window.removeEventListener('resize', resizeHandler);
         window.addEventListener('resize', resizeHandler);
         chart._resizeHandler = resizeHandler;
-        return;
     }
-
-    chart.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                var idx = params[0].dataIndex;
-                var name = categories[idx] || '';
-                var actual = actualValues[idx] || 0;
-                var target = targetValues[idx] || 0;
-                var rate = target > 0 ? (actual / target * 100).toFixed(1) : 0;
-                var color = rate >= 100 ? '#10b981' : rate >= 60 ? '#f59e0b' : '#ef4444';
-                var status = rate >= 100 ? '✅ 已达标' : rate >= 60 ? '⚠️ 进行中' : '❌ 待提升';
-                return '<strong>' + name + '</strong><br/>' +
-                       '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
-                       '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
-                       '达成率: <strong style="color:' + color + ';">' + rate + '%</strong><br/>' +
-                       '状态: ' + status;
-            }
-        },
-        legend: {
-            data: ['实际分值', '目标分值', '达成率'],
-            bottom: 0,
-            icon: 'roundRect',
-            itemWidth: 12,
-            itemHeight: 8,
-            fontSize: 10
-        },
-        grid: {
-            left: '8%',
-            right: '12%',
-            top: '6%',
-            bottom: '18%',
-            containLabel: true
-        },
-        xAxis: {
-            type: 'category',
-            data: categories,
-            axisLabel: {
-                rotate: 30,
-                fontSize: 8,
-                interval: 0,
-                width: 80,
-                overflow: 'break'
-            }
-        },
-        yAxis: [
-            {
-                type: 'value',
-                name: '分值',
-                splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                min: 0
-            },
-            {
-                type: 'value',
-                name: '达成率 %',
-                splitLine: { show: false },
-                min: 0,
-                max: 150,
-                axisLabel: {
-                    formatter: function(value) { return value + '%'; }
-                }
-            }
-        ],
-        series: [
-            {
-                name: '实际分值',
-                type: 'bar',
-                data: actualValues,
-                barWidth: '28%',
-                itemStyle: {
-                    borderRadius: [3, 3, 0, 0],
-                    color: function(params) {
-                        var idx = params.dataIndex;
-                        var rate = targetValues[idx] > 0 ? (actualValues[idx] / targetValues[idx]) : 0;
-                        if (rate >= 1) return '#10b981';
-                        if (rate >= 0.6) return '#f59e0b';
-                        return '#ef4444';
-                    }
-                },
-                label: {
-                    show: true,
-                    position: 'top',
-                    fontSize: 7,
-                    fontWeight: 600,
-                    color: '#334155',
-                    formatter: function(params) {
-                        return params.value > 0 ? params.value.toFixed(1) : '';
-                    }
-                }
-            },
-            {
-                name: '目标分值',
-                type: 'bar',
-                data: targetValues,
-                barWidth: '28%',
-                itemStyle: {
-                    borderRadius: [3, 3, 0, 0],
-                    color: '#94a3b8',
-                    opacity: 0.4
-                },
-                label: {
-                    show: true,
-                    position: 'top',
-                    fontSize: 7,
-                    fontWeight: 600,
-                    color: '#94a3b8',
-                    formatter: function(params) {
-                        return params.value > 0 ? params.value.toFixed(1) : '';
-                    }
-                }
-            },
-            {
-                name: '达成率',
-                type: 'line',
-                yAxisIndex: 1,
-                data: rateData,
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 5,
-                lineStyle: {
-                    color: '#8b5cf6',
-                    width: 2
-                },
-                itemStyle: {
-                    color: function(params) {
-                        var rate = params.value;
-                        if (rate >= 100) return '#10b981';
-                        if (rate >= 60) return '#f59e0b';
-                        return '#ef4444';
-                    }
-                },
-                label: {
-                    show: true,
-                    position: 'right',
-                    fontSize: 7,
-                    fontWeight: 600,
-                    formatter: function(params) {
-                        return params.value > 0 ? params.value.toFixed(0) + '%' : '';
-                    }
-                }
-            }
-        ]
-    });
-
-    var resizeHandler = function() { chart.resize(); };
-    window.removeEventListener('resize', resizeHandler);
-    window.addEventListener('resize', resizeHandler);
-    chart._resizeHandler = resizeHandler;
 }
 
 // ============================================================
@@ -1124,8 +1091,8 @@ function renderAll(data) {
     safeSetText('recordCount', '共 ' + trackedCount + ' 条 (🟡' + openCount + ' · ✅' + closedCount + ')');
     renderTable(data);
 
-    // ★★★ 渲染目标达成率图表 ★★★
-    renderTargetChart(openData);
+    // ★★★ 渲染目标达成率图表（两个项目分别显示）★★★
+    renderTargetCharts(openData);
     
     renderCharts(openData);
 }
