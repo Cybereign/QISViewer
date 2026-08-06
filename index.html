@@ -211,24 +211,51 @@
 
         <!-- ===== 图表 ===== -->
         <div id="chartGrid" class="chart-grid">
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div><div id="chartStatusSW" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (硬件分)</div><div id="chartStatusHW" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (软件分)</div><div id="chartImportanceSW" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (硬件分)</div><div id="chartImportanceHW" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-building"></i> 匹配中心分布</div><div id="chartDept" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-chart-bar"></i> 各项目·中心软件/硬件分值</div><div id="chartProjectCompare" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div><div id="chartGantt" class="chart-container" style="height:280px;"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div><div id="chartScore" class="chart-container"></div></div>
-            <div class="chart-card"><div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div><div id="chartSource" class="chart-container"></div></div>
-            <!-- ★★★ 目标达成率图表1: DH1基础车 ★★★ -->
-            <div class="chart-card">
+            <!-- ★★★ 目标达成率图表 ★★★ -->
+            <div id="targetChartContainer" class="chart-card">
                 <div class="chart-title"><i class="fas fa-bullseye"></i> DH1基础车 目标达成率</div>
                 <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
             </div>
-            <!-- ★★★ 目标达成率图表2: DH1长续航车 ★★★ -->
-            <div class="chart-card">
+            <div id="targetChartContainer2" class="chart-card">
                 <div class="chart-title"><i class="fas fa-bullseye"></i> DH1长续航车 目标达成率</div>
                 <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div>
+                <div id="chartStatusSW" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (硬件分)</div>
+                <div id="chartStatusHW" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (软件分)</div>
+                <div id="chartImportanceSW" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (硬件分)</div>
+                <div id="chartImportanceHW" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-building"></i> 匹配中心分布</div>
+                <div id="chartDept" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-chart-bar"></i> 各项目·中心软件/硬件分值</div>
+                <div id="chartProjectCompare" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div>
+                <div id="chartGantt" class="chart-container" style="height:280px;"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div>
+                <div id="chartScore" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div>
+                <div id="chartSource" class="chart-container"></div>
             </div>
         </div>
 
@@ -797,6 +824,9 @@ function renderStatsTable(openData) {
 // ★★★ 目标达成率图表（按项目分别显示，按专业绘图）★★★
 // ============================================================
 function renderTargetCharts(openData) {
+    var modules = displayConfig.modules || {};
+    if (modules.targetChart === false) return;
+    
     var projects = appConfig.projectConfig.projects || [];
     var stages = (appConfig.stageTarget || {}).stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
