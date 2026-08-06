@@ -209,9 +209,8 @@
             </div>
         </div>
 
-        <!-- ===== 图表 ===== -->
-        <div id="chartGrid" class="chart-grid">
-            <!-- ★★★ 目标达成率图表 ★★★ -->
+        <!-- ===== ★★★ 目标达成率图表 - 在统计表格下面 ★★★ ===== -->
+        <div id="targetChartRow" class="chart-grid" style="margin-bottom:16px;">
             <div id="targetChartContainer" class="chart-card">
                 <div class="chart-title"><i class="fas fa-bullseye"></i> DH1基础车 目标达成率</div>
                 <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
@@ -220,7 +219,11 @@
                 <div class="chart-title"><i class="fas fa-bullseye"></i> DH1长续航车 目标达成率</div>
                 <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
             </div>
-            
+            <div class="chart-card" style="visibility:hidden;"></div>
+        </div>
+
+        <!-- ===== 其他图表 ===== -->
+        <div id="chartGrid" class="chart-grid">
             <div class="chart-card">
                 <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div>
                 <div id="chartStatusSW" class="chart-container"></div>
