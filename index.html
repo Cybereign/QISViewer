@@ -63,7 +63,6 @@
         .chart-card .chart-title i { color: #3b82f6; font-size: 14px; }
         .chart-container { width: 100%; height: 200px; }
 
-        /* ===== 整体统计表格样式 ===== */
         .stats-wrapper { background: white; border-radius: 14px; padding: 10px 14px 14px; border: 1px solid #edf2f7; margin-bottom: 16px; }
         .stats-table-wrap { overflow-x: auto; border-radius: 10px; max-height: 500px; overflow-y: auto; }
         #statsTable { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1100px; }
@@ -73,33 +72,12 @@
         #statsTable td:nth-child(2) { text-align: left; }
         #statsTable td:nth-child(3) { text-align: left; }
         #statsTable tr:hover td { background: #f8fafc; }
-        /* 项目分组标题行 */
-        .stats-group-header td {
-            background: #e8ecf1 !important;
-            font-weight: 700;
-            font-size: 13px;
-            color: #0f172a;
-            border-bottom: 2px solid #cbd5e1;
-            padding: 6px 8px;
-            text-align: left;
-        }
-        .stats-group-header:hover td {
-            background: #e8ecf1 !important;
-        }
-        /* 其他中心行 */
-        .stats-other-center td {
-            background: #fafafa !important;
-            color: #94a3b8;
-        }
-        .stats-other-center:hover td {
-            background: #f5f5f5 !important;
-        }
-        .stats-other-center td:first-child {
-            color: #94a3b8;
-        }
-        .stats-other-center td:nth-child(2) {
-            color: #94a3b8;
-        }
+        .stats-group-header td { background: #e8ecf1 !important; font-weight: 700; font-size: 13px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+        .stats-group-header:hover td { background: #e8ecf1 !important; }
+        .stats-other-center td { background: #fafafa !important; color: #94a3b8; }
+        .stats-other-center:hover td { background: #f5f5f5 !important; }
+        .stats-other-center td:first-child { color: #94a3b8; }
+        .stats-other-center td:nth-child(2) { color: #94a3b8; }
 
         .table-wrapper { background: white; border-radius: 14px; padding: 10px 14px 14px; border: 1px solid #edf2f7; }
         .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
@@ -217,7 +195,7 @@
         <!-- ===== KPI ===== -->
         <div id="kpiGrid" class="kpi-grid"></div>
 
-        <!-- ===== ★★★ 整体统计表格（放在KPI下面，图表上面）★★★ ===== -->
+        <!-- ===== 整体统计表格 ===== -->
         <div id="statsWrapper" class="stats-wrapper">
             <div class="table-header">
                 <h3><i class="fas fa-chart-pie"></i> 项目 × 中心 × 专业 整体统计</h3>
@@ -225,24 +203,7 @@
             </div>
             <div class="stats-table-wrap">
                 <table id="statsTable">
-                    <thead>
-                        <tr>
-                            <th>项目</th>
-                            <th>中心</th>
-                            <th>专业</th>
-                            <th>问题数</th>
-                            <th>软件分</th>
-                            <th>硬件分</th>
-                            <th>总分</th>
-                            <th>S1</th>
-                            <th>S2</th>
-                            <th>S3</th>
-                            <th>S4</th>
-                            <th>A</th>
-                            <th>B</th>
-                            <th>C</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>项目</th><th>中心</th><th>专业</th><th>问题数</th><th>软件分</th><th>硬件分</th><th>总分</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>A</th><th>B</th><th>C</th></tr></thead>
                     <tbody id="statsBody"></tbody>
                 </table>
             </div>
@@ -259,6 +220,11 @@
             <div class="chart-card"><div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div><div id="chartGantt" class="chart-container" style="height:280px;"></div></div>
             <div class="chart-card"><div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div><div id="chartScore" class="chart-container"></div></div>
             <div class="chart-card"><div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div><div id="chartSource" class="chart-container"></div></div>
+            <!-- ★★★ 目标达成率图表 ★★★ -->
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-bullseye"></i> 目标达成率</div>
+                <div id="chartTarget" class="chart-container" style="height:280px;"></div>
+            </div>
         </div>
 
         <!-- ===== 明细表格 ===== -->
@@ -273,7 +239,7 @@
         </div>
 
         <div id="footerNote" class="footer-note">
-            <i class="fas fa-cog"></i> config.json · personConfig.json · 🟡未关闭计分 · ✅已关闭不计分
+            <i class="fas fa-cog"></i> projectConfig.json · personConfig.json · 🟡未关闭计分 · ✅已关闭不计分
         </div>
     </div>
 </div>
@@ -309,10 +275,10 @@ function safeSetHTML(id, html) {
 // 配置加载（从 JSON 文件）
 // ============================================================
 function loadAllConfigs() {
-    // 1. 加载 config.json
-    fetch('config.json?t=' + Date.now())
+    // 1. 加载 projectConfig.json
+    fetch('projectConfig.json?t=' + Date.now())
         .then(function(res) {
-            if (!res.ok) throw new Error('config.json 不存在');
+            if (!res.ok) throw new Error('projectConfig.json 不存在');
             return res.json();
         })
         .then(function(data) {
@@ -321,15 +287,15 @@ function loadAllConfigs() {
             safeSetText('hwWeightStatus', '已配置');
             var projects = appConfig.projectConfig.projects || [];
             safeSetText('projectStatus', projects.length + ' 个');
-            console.log('✅ config.json 加载成功');
+            console.log('✅ projectConfig.json 加载成功');
             checkAllConfigsLoaded();
         })
         .catch(function(err) {
-            console.error('❌ config.json 加载失败:', err.message);
+            console.error('❌ projectConfig.json 加载失败:', err.message);
             safeSetText('swWeightStatus', '⚠️ 未加载');
             safeSetText('hwWeightStatus', '⚠️ 未加载');
             safeSetText('projectStatus', '⚠️ 未加载');
-            showError('config.json 加载失败: ' + err.message);
+            showError('projectConfig.json 加载失败: ' + err.message);
         });
 
     // 2. 加载 personConfig.json
@@ -425,6 +391,44 @@ function getMatchedProfession(prof) {
         if (prof === allProfessions[i]) return prof;
     }
     return '其他专业';
+}
+
+// ============================================================
+// 获取项目阶段信息
+// ============================================================
+function getProjectStage(projectId) {
+    if (!appConfig) return null;
+    var projects = appConfig.projectConfig.projects || [];
+    for (var i = 0; i < projects.length; i++) {
+        if (projects[i].id === projectId) {
+            var stageId = projects[i].stage || 'SG10';
+            var stages = appConfig.stageTarget.stages || {};
+            return stages[stageId] || null;
+        }
+    }
+    return null;
+}
+
+function getProjectStageId(projectId) {
+    if (!appConfig) return 'SG10';
+    var projects = appConfig.projectConfig.projects || [];
+    for (var i = 0; i < projects.length; i++) {
+        if (projects[i].id === projectId) {
+            return projects[i].stage || 'SG10';
+        }
+    }
+    return 'SG10';
+}
+
+function getProjectName(projectId) {
+    if (!appConfig) return projectId;
+    var projects = appConfig.projectConfig.projects || [];
+    for (var i = 0; i < projects.length; i++) {
+        if (projects[i].id === projectId) {
+            return projects[i].name || projectId;
+        }
+    }
+    return projectId;
 }
 
 // ============================================================
@@ -687,7 +691,7 @@ function groupBySum(arr, key, sumKey) {
 }
 
 // ============================================================
-// ★★★ 渲染整体统计表格（按项目分组，其他中心在最后）★★★
+// 渲染整体统计表格
 // ============================================================
 function renderStatsTable(openData) {
     var tbody = document.getElementById('statsBody');
@@ -706,7 +710,6 @@ function renderStatsTable(openData) {
     projectIds.push('other');
     projectNames['other'] = '其他项目';
 
-    // 中心顺序：两个主要中心在前，其他中心在最后
     var centers = ['智能驾驶与座舱开发中心', '智能电子电气开发中心', '其他中心'];
 
     var deptProfessions = {
@@ -725,7 +728,6 @@ function renderStatsTable(openData) {
 
         if (projectData.length === 0) continue;
 
-        // 添加项目分组标题行
         var projectColor = proj === 'project1' ? '#1d4ed8' : proj === 'project2' ? '#7c3aed' : '#64748b';
         html += '<tr class="stats-group-header">' +
             '<td colspan="14" style="color:' + projectColor + ';">📁 ' + projectName + '（共 ' + projectData.length + ' 条）</td>' +
@@ -787,6 +789,256 @@ function renderStatsTable(openData) {
 }
 
 // ============================================================
+// 目标达成率图表
+// ============================================================
+function renderTargetChart(openData) {
+    var dom = document.getElementById('chartTarget');
+    if (!dom) return;
+    if (chartInstances['chartTarget']) { chartInstances['chartTarget'].dispose(); }
+
+    var chart = echarts.init(dom);
+    chartInstances['chartTarget'] = chart;
+
+    var stageConfig = appConfig.stageTarget || {};
+    var stages = stageConfig.stages || {};
+    var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+    
+    var projects = appConfig.projectConfig.projects || [];
+    
+    var categories = [];
+    var actualValues = [];
+    var targetValues = [];
+    var rateData = [];
+
+    for (var pi = 0; pi < projects.length; pi++) {
+        var proj = projects[pi];
+        var projectId = proj.id;
+        var projectName = proj.name;
+        var stageId = proj.stage || 'SG10';
+        var stage = stages[stageId];
+        
+        if (!stage) continue;
+        
+        var projectData = openData.filter(function(d) { return d.projectId === projectId; });
+        if (projectData.length === 0) continue;
+        
+        categories.push('📁 ' + projectName + ' (' + stageId + ')');
+        actualValues.push(0);
+        targetValues.push(0);
+        rateData.push(0);
+        
+        for (var ci = 0; ci < centerNames.length; ci++) {
+            var cName = centerNames[ci];
+            var cConfig = stage.centers[cName];
+            if (!cConfig) continue;
+            
+            var target = cConfig.target || 0;
+            var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
+            var actual = 0;
+            for (var di = 0; di < centerData.length; di++) {
+                actual += centerData[di].swScore;
+            }
+            
+            categories.push('  ' + cName.substring(0, 8));
+            actualValues.push(Math.round(actual * 10) / 10);
+            targetValues.push(target);
+            var rate = target > 0 ? (actual / target * 100) : 0;
+            rateData.push(Math.min(rate, 200));
+            
+            var profs = cConfig.professions || {};
+            var profActuals = {};
+            for (var profName in profs) {
+                if (profs.hasOwnProperty(profName)) {
+                    var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
+                    var profActual = 0;
+                    for (var pdi = 0; pdi < profData.length; pdi++) {
+                        profActual += profData[pdi].swScore;
+                    }
+                    profActuals[profName] = profActual;
+                }
+            }
+            for (var profName2 in profs) {
+                if (profs.hasOwnProperty(profName2)) {
+                    var ratio = profs[profName2] || 0;
+                    var profTarget = target * ratio;
+                    var profActual2 = profActuals[profName2] || 0;
+                    categories.push('    ├ ' + profName2);
+                    actualValues.push(Math.round(profActual2 * 10) / 10);
+                    targetValues.push(Math.round(profTarget * 10) / 10);
+                    var rate2 = profTarget > 0 ? (profActual2 / profTarget * 100) : 0;
+                    rateData.push(Math.min(rate2, 200));
+                }
+            }
+        }
+    }
+
+    if (categories.length <= projects.length) {
+        chart.setOption({
+            title: {
+                text: '暂无目标数据',
+                left: 'center',
+                top: 'center',
+                textStyle: { color: '#94a3b8', fontSize: 14, fontWeight: 400 }
+            }
+        });
+        var resizeHandler = function() { chart.resize(); };
+        window.removeEventListener('resize', resizeHandler);
+        window.addEventListener('resize', resizeHandler);
+        chart._resizeHandler = resizeHandler;
+        return;
+    }
+
+    chart.setOption({
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            formatter: function(params) {
+                var idx = params[0].dataIndex;
+                var name = categories[idx] || '';
+                var actual = actualValues[idx] || 0;
+                var target = targetValues[idx] || 0;
+                var rate = target > 0 ? (actual / target * 100).toFixed(1) : 0;
+                var color = rate >= 100 ? '#10b981' : rate >= 60 ? '#f59e0b' : '#ef4444';
+                var status = rate >= 100 ? '✅ 已达标' : rate >= 60 ? '⚠️ 进行中' : '❌ 待提升';
+                return '<strong>' + name + '</strong><br/>' +
+                       '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
+                       '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
+                       '达成率: <strong style="color:' + color + ';">' + rate + '%</strong><br/>' +
+                       '状态: ' + status;
+            }
+        },
+        legend: {
+            data: ['实际分值', '目标分值', '达成率'],
+            bottom: 0,
+            icon: 'roundRect',
+            itemWidth: 12,
+            itemHeight: 8,
+            fontSize: 10
+        },
+        grid: {
+            left: '8%',
+            right: '12%',
+            top: '6%',
+            bottom: '18%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: categories,
+            axisLabel: {
+                rotate: 30,
+                fontSize: 8,
+                interval: 0,
+                width: 80,
+                overflow: 'break'
+            }
+        },
+        yAxis: [
+            {
+                type: 'value',
+                name: '分值',
+                splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                min: 0
+            },
+            {
+                type: 'value',
+                name: '达成率 %',
+                splitLine: { show: false },
+                min: 0,
+                max: 150,
+                axisLabel: {
+                    formatter: function(value) { return value + '%'; }
+                }
+            }
+        ],
+        series: [
+            {
+                name: '实际分值',
+                type: 'bar',
+                data: actualValues,
+                barWidth: '28%',
+                itemStyle: {
+                    borderRadius: [3, 3, 0, 0],
+                    color: function(params) {
+                        var idx = params.dataIndex;
+                        var rate = targetValues[idx] > 0 ? (actualValues[idx] / targetValues[idx]) : 0;
+                        if (rate >= 1) return '#10b981';
+                        if (rate >= 0.6) return '#f59e0b';
+                        return '#ef4444';
+                    }
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    fontSize: 7,
+                    fontWeight: 600,
+                    color: '#334155',
+                    formatter: function(params) {
+                        return params.value > 0 ? params.value.toFixed(1) : '';
+                    }
+                }
+            },
+            {
+                name: '目标分值',
+                type: 'bar',
+                data: targetValues,
+                barWidth: '28%',
+                itemStyle: {
+                    borderRadius: [3, 3, 0, 0],
+                    color: '#94a3b8',
+                    opacity: 0.4
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    fontSize: 7,
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                    formatter: function(params) {
+                        return params.value > 0 ? params.value.toFixed(1) : '';
+                    }
+                }
+            },
+            {
+                name: '达成率',
+                type: 'line',
+                yAxisIndex: 1,
+                data: rateData,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 5,
+                lineStyle: {
+                    color: '#8b5cf6',
+                    width: 2
+                },
+                itemStyle: {
+                    color: function(params) {
+                        var rate = params.value;
+                        if (rate >= 100) return '#10b981';
+                        if (rate >= 60) return '#f59e0b';
+                        return '#ef4444';
+                    }
+                },
+                label: {
+                    show: true,
+                    position: 'right',
+                    fontSize: 7,
+                    fontWeight: 600,
+                    formatter: function(params) {
+                        return params.value > 0 ? params.value.toFixed(0) + '%' : '';
+                    }
+                }
+            }
+        ]
+    });
+
+    var resizeHandler = function() { chart.resize(); };
+    window.removeEventListener('resize', resizeHandler);
+    window.addEventListener('resize', resizeHandler);
+    chart._resizeHandler = resizeHandler;
+}
+
+// ============================================================
 // 渲染主函数
 // ============================================================
 function renderAll(data) {
@@ -804,7 +1056,6 @@ function renderAll(data) {
     safeSetText('openCount', openCount);
     safeSetText('closedCount', closedCount);
 
-    // 项目统计
     var projectConfig = appConfig ? appConfig.projectConfig : null;
     var projectIds = [];
     var projectLabels = {};
@@ -868,12 +1119,14 @@ function renderAll(data) {
         '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
     );
 
-    // ★★★ 渲染整体统计表格 ★★★
     renderStatsTable(openData);
 
     safeSetText('recordCount', '共 ' + trackedCount + ' 条 (🟡' + openCount + ' · ✅' + closedCount + ')');
     renderTable(data);
 
+    // ★★★ 渲染目标达成率图表 ★★★
+    renderTargetChart(openData);
+    
     renderCharts(openData);
 }
 
@@ -916,7 +1169,7 @@ function renderTable(data) {
 }
 
 // ============================================================
-// 图表渲染（保持不变）
+// 图表渲染
 // ============================================================
 function renderCharts(openData) {
     var statusSW = groupBySum(openData, 'mainStatus', 'swScore');
@@ -943,7 +1196,7 @@ function renderCharts(openData) {
 }
 
 // ============================================================
-// 图表渲染函数（保持不变）
+// 图表渲染函数
 // ============================================================
 function renderScoreBarChart(domId, data, label, color) {
     var dom = document.getElementById(domId);
