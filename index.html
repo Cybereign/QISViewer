@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>缺陷数据智能分析看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif; background: #f0f4f9; padding: 16px 20px; color: #1e293b; }
+        .dashboard { max-width: 1900px; margin: 0 auto; }
+        .module-hidden { display: none !important; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; background: white; padding: 14px 22px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .header h1 { font-weight: 700; font-size: 24px; color: #0f172a; }
+        .header h1 i { color: #3b82f6; margin-right: 10px; }
+        .header .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .header .btn { background: #3b82f6; color: white; border: none; padding: 7px 18px; border-radius: 40px; font-size: 13px; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .header .btn:hover { background: #2563eb; }
+        .header .btn i { margin-right: 6px; }
+        .header .btn-outline { background: white; color: #3b82f6; border: 1.5px solid #3b82f6; }
+        .header .btn-outline:hover { background: #eff6ff; }
+        .header .btn-success { background: #10b981; }
+        .header .btn-success:hover { background: #059669; }
+        .header .btn-person { background: #8b5cf6; color: white; border: none; padding: 7px 18px; border-radius: 40px; font-size: 13px; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .header .btn-person:hover { background: #7c3aed; }
+        .header .info-badge { font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 14px; border-radius: 30px; white-space: nowrap; }
+
+        .status-bar { display: flex; gap: 16px; flex-wrap: wrap; background: white; padding: 10px 18px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e9eef3; align-items: center; font-size: 13px; }
+        .status-bar .item { display: flex; align-items: center; gap: 6px; }
+        .status-bar .item .label { color: #94a3b8; }
+        .status-bar .item .value { font-weight: 600; color: #0f172a; }
+        .status-bar .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-bar .dot.green { background: #10b981; }
+        .status-bar .dot.blue { background: #3b82f6; }
+        .status-bar .dot.orange { background: #f97316; }
+        .status-bar .dot.yellow { background: #f59e0b; }
+        .status-bar .dot.red { background: #ef4444; }
+        .status-bar .dot.purple { background: #8b5cf6; }
+
+        .filter-bar { background: white; padding: 10px 18px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e9eef3; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+        .filter-bar .label { color: #94a3b8; font-weight: 500; }
+        .filter-bar .value { font-weight: 600; color: #0f172a; }
+        .filter-bar .badge { background: #dbeafe; color: #1d4ed8; padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .filter-bar .badge.green { background: #dcfce7; color: #166534; }
+        .filter-bar .badge.purple { background: #ede9fe; color: #7c3aed; }
+        .filter-bar .badge.orange { background: #fef3c7; color: #d97706; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .kpi-card { background: white; padding: 14px 16px; border-radius: 14px; border: 1px solid #edf2f7; transition: 0.2s; }
+        .kpi-card:hover { border-color: #cbd5e1; }
+        .kpi-card .label { font-size: 10px; font-weight: 500; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
+        .kpi-card .value { font-size: 28px; font-weight: 700; color: #0f172a; margin: 2px 0; }
+        .kpi-card .sub { font-size: 10px; color: #94a3b8; line-height: 1.6; }
+        .kpi-card .sub .tag-soft { color: #3b82f6; font-weight: 600; }
+        .kpi-card .sub .tag-hard { color: #10b981; font-weight: 600; }
+        .kpi-card .sub .tag-total { color: #8b5cf6; font-weight: 600; }
+        .kpi-card .dept-tag { background: #dbeafe; color: #1d4ed8; padding: 1px 8px; border-radius: 20px; font-size: 9px; font-weight: 600; }
+        .kpi-card .dept-tag.purple { background: #ede9fe; color: #7c3aed; }
+        .kpi-card .dept-tag.orange { background: #fef3c7; color: #d97706; }
+
+        .chart-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+        .chart-card { background: white; border-radius: 14px; padding: 12px 14px 4px 14px; border: 1px solid #edf2f7; }
+        .chart-card .chart-title { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+        .chart-card .chart-title i { color: #3b82f6; font-size: 14px; }
+        .chart-container { width: 100%; height: 200px; }
+
+        .stats-wrapper { background: white; border-radius: 14px; padding: 10px 14px 14px; border: 1px solid #edf2f7; margin-bottom: 16px; }
+        .stats-table-wrap { overflow-x: auto; border-radius: 10px; max-height: 400px; overflow-y: auto; }
+        #statsTable { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1100px; }
+        #statsTable th { background: #f1f5f9; color: #475569; font-weight: 600; padding: 5px 6px; text-align: center; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+        #statsTable td { text-align: center; padding: 4px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 11px; }
+        #statsTable td:first-child { text-align: left; }
+        #statsTable td:nth-child(2) { text-align: left; }
+        #statsTable td:nth-child(3) { text-align: left; }
+        #statsTable tr:hover td { background: #f8fafc; }
+
+        .table-wrapper { background: white; border-radius: 14px; padding: 10px 14px 14px; border: 1px solid #edf2f7; }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+        .table-header h3 { font-size: 14px; font-weight: 600; }
+        .table-header h3 i { color: #3b82f6; margin-right: 6px; }
+        .table-scroll { overflow-x: auto; border-radius: 10px; max-height: 460px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1500px; }
+        th { background: #f8fafc; color: #475569; font-weight: 600; padding: 6px 5px; text-align: left; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+        td { padding: 5px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 11px; }
+        tr:hover td { background: #fafdff; }
+        tr.filtered { background: #f0fdf4; }
+        tr.filtered:hover td { background: #dcfce7; }
+        tr.closed { background: #fef3c7; }
+        tr.closed:hover td { background: #fde68a; }
+        .status-badge { display: inline-block; padding: 1px 8px; border-radius: 30px; font-size: 9px; font-weight: 500; background: #e9edf2; color: #334155; white-space: nowrap; }
+        .status-badge.待立项 { background: #fff3cd; color: #856404; }
+        .status-badge.解析中 { background: #cce5ff; color: #004085; }
+        .status-badge.待制定改进计划 { background: #f8d7da; color: #721c24; }
+        .status-badge.待部门联络人审核 { background: #d1ecf1; color: #0c5460; }
+        .status-badge.质量主管退回 { background: #f5c6cb; color: #721c24; }
+        .status-badge.已关闭 { background: #d4edda; color: #155724; }
+        .importance { font-weight: 700; font-size: 12px; }
+        .importance.S1 { color: #dc2626; }
+        .importance.S2 { color: #f59e0b; }
+        .importance.S3 { color: #d97706; }
+        .importance.S4 { color: #2563eb; }
+        .importance.A { color: #dc2626; }
+        .importance.B { color: #7c3aed; }
+        .importance.C { color: #059669; }
+        .tag { background: #eef2ff; padding: 1px 6px; border-radius: 30px; font-size: 9px; color: #4f46e5; white-space: nowrap; }
+        .tag.intelligent { background: #dbeafe; color: #1d4ed8; }
+        .tag.non-intelligent { background: #f1f5f9; color: #94a3b8; }
+        .tag.filter-matched { background: #dcfce7; color: #166534; }
+        .tag.closed-tag { background: #fef3c7; color: #d97706; }
+        .tag.project1 { background: #dbeafe; color: #1d4ed8; }
+        .tag.project2 { background: #ede9fe; color: #7c3aed; }
+        .tag.project-other { background: #f1f5f9; color: #94a3b8; }
+        .score { font-weight: 700; font-size: 11px; }
+        .score.high { color: #dc2626; }
+        .score.medium { color: #f59e0b; }
+        .score.low { color: #3b82f6; }
+        .score.closed-score { color: #94a3b8; }
+        .footer-note { margin-top: 16px; text-align: right; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+
+        .file-upload-area { border: 2px dashed #d1d9e6; border-radius: 14px; padding: 28px 20px; text-align: center; background: #fafcff; margin-bottom: 16px; }
+        .file-upload-area input[type="file"] { display: none; }
+        .file-upload-area label { background: #3b82f6; color: white; padding: 10px 28px; border-radius: 40px; cursor: pointer; font-weight: 500; display: inline-block; transition: 0.2s; }
+        .file-upload-area label:hover { background: #2563eb; }
+        .file-upload-area p { margin-top: 8px; color: #94a3b8; font-size: 13px; }
+        .file-upload-area .file-types { margin-top: 4px; font-size: 12px; color: #94a3b8; }
+        .loading { text-align: center; padding: 30px 0; color: #94a3b8; }
+        .loading i { font-size: 26px; display: block; margin-bottom: 8px; }
+        .error-msg { text-align: center; padding: 30px 20px; color: #dc2626; }
+        .error-msg i { font-size: 32px; display: block; margin-bottom: 10px; }
+        .hidden { display: none !important; }
+
+        @media (max-width: 1200px) { .chart-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 800px) { .chart-grid { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } .header { flex-direction: column; align-items: stretch; } .header .tools { justify-content: center; } }
+        @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <!-- ===== 头部 ===== -->
+    <div id="header" class="header">
+        <h1><i class="fas fa-brain"></i>缺陷智能分析看板</h1>
+        <div class="tools">
+            <span class="info-badge" id="fileInfo"><i class="fas fa-file-excel"></i> 未加载</span>
+            <button class="btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-upload"></i> 选择 Excel</button>
+            <button class="btn btn-outline" onclick="loadDefaultExcel()"><i class="fas fa-file"></i> data.xlsx</button>
+            <button class="btn btn-outline" onclick="loadDefaultExcelXls()"><i class="fas fa-file"></i> data.xls</button>
+            <button class="btn btn-success" onclick="loadConfig()"><i class="fas fa-cog"></i> 加载配置</button>
+            <button class="btn btn-outline" onclick="document.getElementById('configInput').click()" style="font-size:12px;"><i class="fas fa-upload"></i> 上传配置</button>
+            <button class="btn btn-outline" onclick="loadDisplayConfig()" style="font-size:12px;"><i class="fas fa-eye"></i> 显示配置</button>
+            <button class="btn btn-person" onclick="loadPersonConfig()"><i class="fas fa-user"></i> 加载人员</button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)" style="display:none;">
+            <input type="file" id="configInput" accept=".json" onchange="handleConfigSelect(event)" style="display:none;">
+            <input type="file" id="displayConfigInput" accept=".json" onchange="handleDisplayConfigSelect(event)" style="display:none;">
+            <input type="file" id="personConfigInput" accept=".json" onchange="handlePersonConfigSelect(event)" style="display:none;">
+        </div>
+    </div>
+
+    <!-- ===== 状态栏 ===== -->
+    <div id="statusBar" class="status-bar">
+        <div class="item"><span class="dot green"></span><span class="label">数据:</span><span class="value" id="dataStatus">未加载</span></div>
+        <div class="item"><span class="dot blue"></span><span class="label">总数:</span><span class="value" id="totalCount">0</span></div>
+        <div class="item"><span class="dot orange"></span><span class="label">未关闭:</span><span class="value" id="openCount">0</span></div>
+        <div class="item"><span class="dot green"></span><span class="label">已关闭:</span><span class="value" id="closedCount">0</span></div>
+        <div class="item"><span class="dot yellow"></span><span class="label">软件权重:</span><span class="value" id="swWeightStatus">已配置</span></div>
+        <div class="item"><span class="dot red"></span><span class="label">硬件权重:</span><span class="value" id="hwWeightStatus">已配置</span></div>
+        <div class="item"><span class="dot purple"></span><span class="label">项目数:</span><span class="value" id="projectStatus">2 个</span></div>
+    </div>
+
+    <!-- ===== 过滤栏 ===== -->
+    <div id="filterBar" class="filter-bar">
+        <span class="label"><i class="fas fa-filter"></i> 改善状态:</span>
+        <span class="badge orange" id="openBadge">🟡 未关闭: 1/5,2/5,3/5,4/5</span>
+        <span class="badge green" id="closedBadge">✅ 已关闭: 5/5</span>
+        <span class="label">| 📁 项目:</span>
+        <span class="badge" id="project1Badge">DH1基础车: 0</span>
+        <span class="badge purple" id="project2Badge">DH1长续航车: 0</span>
+        <span class="badge" id="projectOtherBadge">其他: 0</span>
+        <span class="label">| 👤 人员:</span>
+        <span class="badge" id="personCountBadge">加载中...</span>
+    </div>
+
+    <!-- ===== 上传区域 ===== -->
+    <div id="fileUploadArea" class="file-upload-area">
+        <i class="fas fa-file-excel" style="font-size:38px;color:#3b82f6;display:block;margin-bottom:10px;"></i>
+        <label for="fileInput"><i class="fas fa-upload"></i> 选择 Excel 数据文件</label>
+        <p>支持 .xlsx 或 .xls 格式</p>
+        <div class="file-types">📄 支持 .xlsx · .xls</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:6px;" id="fileNameDisplay"></div>
+    </div>
+
+    <!-- ===== 加载/错误 ===== -->
+    <div id="loadingIndicator" class="loading hidden"><i class="fas fa-spinner fa-pulse"></i> 正在解析数据...</div>
+    <div id="errorMsg" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i><p id="errorText"></p></div>
+
+    <!-- ===== 内容区域 ===== -->
+    <div id="contentArea" class="hidden">
+
+        <!-- ===== KPI ===== -->
+        <div id="kpiGrid" class="kpi-grid"></div>
+
+        <!-- ===== 图表 ===== -->
+        <div id="chartGrid" class="chart-grid">
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div><div id="chartStatusSW" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (硬件分)</div><div id="chartStatusHW" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (软件分)</div><div id="chartImportanceSW" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (硬件分)</div><div id="chartImportanceHW" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-building"></i> 匹配中心分布</div><div id="chartDept" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-chart-bar"></i> 各项目·中心软件/硬件分值</div><div id="chartProjectCompare" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div><div id="chartGantt" class="chart-container" style="height:280px;"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div><div id="chartScore" class="chart-container"></div></div>
+            <div class="chart-card"><div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div><div id="chartSource" class="chart-container"></div></div>
+        </div>
+
+        <!-- ===== 整体统计表格 ===== -->
+        <div id="statsWrapper" class="stats-wrapper">
+            <div class="table-header">
+                <h3><i class="fas fa-chart-pie"></i> 项目 × 中心 × 专业 整体统计</h3>
+                <span class="stats-count" id="statsCount"><i class="fas fa-database"></i> 共 0 条</span>
+            </div>
+            <div class="stats-table-wrap">
+                <table id="statsTable">
+                    <thead>
+                        <tr>
+                            <th>项目</th><th>中心</th><th>专业</th><th>问题数</th>
+                            <th>软件分</th><th>硬件分</th><th>总分</th>
+                            <th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>A</th><th>B</th><th>C</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== 明细表格 ===== -->
+        <div id="tableWrapper" class="table-wrapper">
+            <div class="table-header">
+                <h3><i class="fas fa-list-ul"></i> 缺陷明细</h3>
+                <span id="recordCount" style="font-size:12px;color:#94a3b8;"><i class="fas fa-database"></i> 共 0 条</span>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>序号</th><th>主单状态</th><th>改善状态</th><th>一元表序号</th><th>项目</th><th>重要度</th>
+                            <th>责任人</th><th>匹配中心</th><th>匹配专业</th>
+                            <th>软件分</th><th>硬件分</th><th>总分</th><th>不符合现象</th><th>录入日期</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== 底部备注 ===== -->
+        <div id="footerNote" class="footer-note">
+            <i class="fas fa-cog"></i> 所有配置已内置 · 🟡未关闭计分 · ✅已关闭不计分
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// ★★★ 所有配置已内置，无需外部JSON文件 ★★★
+// ============================================================
+
+// ============================================================
+// 1. 默认配置（内置）
+// ============================================================
+const DEFAULT_CONFIG = {
+    weightConfigs: {
+        software: { weights: { S1: 10, S2: 3, S3: 1, S4: 0.1, default: 0 } },
+        hardware: { weights: { A: 10, B: 5, C: 1, default: 0 } }
+    },
+    projectConfig: {
+        projects: [
+            { id: "project2", name: "DH1长续航车", keyword: "DH1 75KWh版-" },
+            { id: "project1", name: "DH1基础车", keyword: "DH1-" }
+        ]
+    },
+    statusFilter: { values: ["1/5", "2/5", "3/5", "4/5", "5/5"] }
+};
+
+const DEFAULT_PERSON_CONFIG = {
+    "智能驾驶与座舱开发中心": {
+        "智能座舱": ["张闹", "周飞", "张倩倩", "唐伟恒", "齐肖平", "汪雪莲", "汪华军", "朱鹏", "宋军伟", "郭霞飞", "余鹏", "张鑫浩"],
+        "智能驾驶": ["谢强", "陈重钧", "李志伟", "廖英杰", "郭剑锐", "杨泽林", "袁佳威", "唐文龙", "罗振", "刘永臣", "丰帅强", "黄志威", "胡华军", "徐杰", "王欢", "谢青松", "马辉辉", "李家欢"],
+        "导航地图": ["计瑞虎"],
+        "车云APP": ["余鑫", "吴优", "杨莉升", "舒凌波"],
+        "OTA": ["杨倩雪", "万好"],
+        "TBOX": ["舒本亮", "蔡梓昆"]
+    },
+    "智能电子电气开发中心": {
+        "智能车控": ["齐士举", "帅苏洋", "詹平", "李凯", "徐飞扬", "朱灿", "王博", "张宇昂", "李子骧", "雷雪", "阳奇能", "周荣辉", "李凯杰", "黄涛", "米燕", "张春娇", "郭肖峰", "汪晓开", "余刘其乐", "邓浩晨", "邱旺", "陈子桐", "曾威", "卢佳", "胡舜玉", "张紫阳", "马越", "马莎", "白梦幻", "余俊勋", "宋齐", "王安吉", "王振东", "王豪磊", "韩标", "周仲伟", "程晓军", "吴霞", "陈梁", "李功博", "王朝", "李京", "罗佳茜", "姚胜", "都宏达", "侯莹莹", "安昱霈", "秦龙", "李伟", "张健", "BERNDT OLOF HENRIK R", "梁缘", "黄波", "王俊鹏", "董明杨", "张逸", "付静", "李昌伟", "李佳慧", "赵晓凤", "吴审言", "章颖辉", "王赛", "胡坤", "陈永全", "何弯"],
+        "EMS": ["李游", "唐宇峰"],
+        "EE架构": ["付云龙", "张龙", "杨德顺", "黄意", "晏晓雷", "朱泽鸿", "徐博远", "刘鹏"],
+        "智能硬件": ["王枫", "李建", "黄钰雯", "侯耀宗", "杨建", "殷祥狮"]
+    }
+};
+
+const DEFAULT_DISPLAY_CONFIG = {
+    modules: {
+        header: true, statusBar: false, filterBar: true,
+        kpiGrid: true, chartGrid: true, statsTable: true,
+        tableWrapper: true, footerNote: true,
+        fileUploadArea: true, loadingIndicator: true, errorMsg: true
+    }
+};
+
+// ============================================================
+// 全局状态
+// ============================================================
+let currentData = [];
+let chartInstances = {};
+let displayConfig = {};
+let personConfig = {};
+let personMap = {};
+let appConfig = {};
+
+// ============================================================
+// 安全设置
+// ============================================================
+function safeSetText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+function safeSetHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+// ============================================================
+// 配置加载（内置默认值 + 外部文件覆盖）
+// ============================================================
+
+// 1. 主配置
+function loadConfig() {
+    appConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    updateStatus();
+    if (currentData.length > 0) renderAll(currentData);
+    
+    fetch('config.json?t=' + Date.now())
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(data => {
+            if (data.weightConfigs) appConfig.weightConfigs = data.weightConfigs;
+            if (data.projectConfig) appConfig.projectConfig = data.projectConfig;
+            if (data.statusFilter) appConfig.statusFilter = data.statusFilter;
+            updateStatus();
+            if (currentData.length > 0) renderAll(currentData);
+            console.log('✅ config.json 加载成功');
+        })
+        .catch(() => console.log('ℹ️ 使用内置 config 配置'));
+}
+
+function handleConfigSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.weightConfigs) appConfig.weightConfigs = data.weightConfigs;
+            if (data.projectConfig) appConfig.projectConfig = data.projectConfig;
+            if (data.statusFilter) appConfig.statusFilter = data.statusFilter;
+            updateStatus();
+            if (currentData.length > 0) renderAll(currentData);
+            alert('✅ 配置已加载');
+        } catch (err) { alert('❌ 解析失败: ' + err.message); }
+    };
+    reader.readAsText(file);
+}
+
+function updateStatus() {
+    const modules = displayConfig.modules || {};
+    if (modules.statusBar === false) return;
+    safeSetText('swWeightStatus', '已配置');
+    safeSetText('hwWeightStatus', '已配置');
+    const projects = appConfig.projectConfig.projects || [];
+    safeSetText('projectStatus', projects.length + ' 个');
+}
+
+// 2. 人员配置
+function loadPersonConfig() {
+    personConfig = JSON.parse(JSON.stringify(DEFAULT_PERSON_CONFIG));
+    buildPersonMap();
+    var count = Object.keys(personMap).length;
+    safeSetText('personCountBadge', '已加载: ' + count + ' 人（内置）');
+    console.log('✅ personConfig 内置加载完成，人数:', count);
+    if (currentData.length > 0) renderAll(currentData);
+    
+    fetch('personConfig.json?t=' + Date.now())
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(data => {
+            personConfig = data;
+            buildPersonMap();
+            var newCount = Object.keys(personMap).length;
+            safeSetText('personCountBadge', '已加载: ' + newCount + ' 人（外部）');
+            if (currentData.length > 0) renderAll(currentData);
+            console.log('✅ personConfig.json 加载成功，人数:', newCount);
+        })
+        .catch(() => console.log('ℹ️ 使用内置 personConfig'));
+}
+
+function handlePersonConfigSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            personConfig = data;
+            buildPersonMap();
+            safeSetText('personCountBadge', '已加载: ' + Object.keys(personMap).length + ' 人（上传）');
+            if (currentData.length > 0) renderAll(currentData);
+            alert('✅ 人员配置已加载');
+        } catch (err) { alert('❌ 解析失败: ' + err.message); }
+    };
+    reader.readAsText(file);
+}
+
+function buildPersonMap() {
+    personMap = {};
+    for (const [dept, professions] of Object.entries(personConfig)) {
+        for (const [prof, persons] of Object.entries(professions)) {
+            for (const p of persons) { personMap[p] = { department: dept, profession: prof }; }
+        }
+    }
+}
+
+function getPersonInfo(owner) {
+    if (!owner || owner === '' || owner === '未知') return null;
+    if (personMap[owner]) return personMap[owner];
+    return null;
+}
+
+// 3. UI显示配置
+function loadDisplayConfig() {
+    displayConfig = JSON.parse(JSON.stringify(DEFAULT_DISPLAY_CONFIG));
+    applyDisplayConfig();
+    
+    fetch('displayConfig.json?t=' + Date.now())
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(data => {
+            displayConfig = data;
+            applyDisplayConfig();
+            console.log('✅ displayConfig.json 加载成功');
+        })
+        .catch(() => console.log('ℹ️ 使用内置 displayConfig'));
+}
+
+function handleDisplayConfigSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            displayConfig = data;
+            applyDisplayConfig();
+            alert('✅ 显示配置已加载');
+        } catch (err) { alert('❌ 解析失败: ' + err.message); }
+    };
+    reader.readAsText(file);
+}
+
+function applyDisplayConfig() {
+    const modules = displayConfig.modules || {};
+    const map = {
+        header: 'header', statusBar: 'statusBar', filterBar: 'filterBar',
+        kpiGrid: 'kpiGrid', chartGrid: 'chartGrid', statsTable: 'statsWrapper',
+        tableWrapper: 'tableWrapper', footerNote: 'footerNote',
+        fileUploadArea: 'fileUploadArea', loadingIndicator: 'loadingIndicator', errorMsg: 'errorMsg'
+    };
+    for (const [k, id] of Object.entries(map)) {
+        const el = document.getElementById(id);
+        if (el) {
+            const show = modules[k] !== undefined ? modules[k] : true;
+            if (show) { el.classList.remove('module-hidden'); el.style.cssText = ''; }
+            else { el.classList.add('module-hidden'); el.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:0!important;'; el.innerHTML = ''; }
+        }
+    }
+}
+
+// ============================================================
+// 项目匹配
+// ============================================================
+function matchProject(serialNo) {
+    if (!serialNo) return null;
+    const projects = appConfig.projectConfig.projects || [];
+    for (const p of projects) {
+        if (serialNo.includes(p.keyword)) return p;
+    }
+    return null;
+}
+
+// ============================================================
+// 状态判断
+// ============================================================
+function isOpenStatus(s) { return ['1/5', '2/5', '3/5', '4/5'].includes(s); }
+function isClosedStatus(s) { return s === '5/5'; }
+function isTrackedStatus(s) { return isOpenStatus(s) || isClosedStatus(s); }
+
+// ============================================================
+// 计算分值
+// ============================================================
+function calcScores(importance) {
+    const sw = appConfig.weightConfigs.software.weights || {};
+    const hw = appConfig.weightConfigs.hardware.weights || {};
+    const swScore = sw[importance] !== undefined ? sw[importance] : (sw.default || 0);
+    const hwScore = hw[importance] !== undefined ? hw[importance] : (hw.default || 0);
+    return { swScore, hwScore, totalScore: swScore + hwScore };
+}
+
+// ============================================================
+// Excel 加载
+// ============================================================
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    safeSetText('fileNameDisplay', '📄 ' + file.name);
+    loadExcelFile(file);
+}
+
+function loadExcelByName(baseName) {
+    return fetch(baseName + '.xlsx')
+        .then(res => { if (res.ok) return res.arrayBuffer().then(b => ({ buffer: b, name: baseName + '.xlsx' })); return fetch(baseName + '.xls').then(r => { if (!r.ok) throw new Error('文件不存在'); return r.arrayBuffer().then(b => ({ buffer: b, name: baseName + '.xls' })); }); });
+}
+
+function loadDefaultExcel() {
+    safeSetText('fileNameDisplay', '📄 data.xlsx (默认)');
+    loadExcelByName('data').then(({ buffer, name }) => { const wb = XLSX.read(buffer, { type: 'array' }); processWorkbook(wb, name); })
+        .catch(() => {
+            const uploadEl = document.getElementById('fileUploadArea');
+            if (uploadEl) uploadEl.style.display = 'block';
+            const contentEl = document.getElementById('contentArea');
+            if (contentEl) contentEl.classList.add('hidden');
+            safeSetText('fileInfo', '<i class="fas fa-exclamation-triangle"></i> 未找到 data.xlsx 或 data.xls，请手动选择');
+            safeSetText('dataStatus', '未加载');
+        });
+}
+
+function loadDefaultExcelXls() {
+    safeSetText('fileNameDisplay', '📄 data.xls (默认)');
+    fetch('data.xls').then(r => { if (!r.ok) throw new Error('data.xls 不存在'); return r.arrayBuffer(); })
+        .then(buffer => { const wb = XLSX.read(buffer, { type: 'array' }); processWorkbook(wb, 'data.xls'); })
+        .catch(() => loadDefaultExcel());
+}
+
+function loadExcelFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try { const data = new Uint8Array(e.target.result); const wb = XLSX.read(data, { type: 'array' }); processWorkbook(wb, file.name); }
+        catch (err) { showError('解析失败: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function processWorkbook(wb, fileName) {
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    if (!json || json.length === 0) { showError('Excel 文件为空'); return; }
+
+    const headers = Object.keys(json[0]);
+    console.log('✅ 检测到列名:', headers);
+
+    let serialCol = null, statusCol = null, ownerCol = null, importanceCol = null, descCol = null, dateCol = null, mainStatusCol = null;
+    for (const h of headers) {
+        if (h === '一元表序号' || h === '一元表号') serialCol = h;
+        if (h === '改善状态' || h === '改善进度') statusCol = h;
+        if (h === '负责人' || h === '责任人') ownerCol = h;
+        if (h === '重要度' || h === '重要性') importanceCol = h;
+        if (h === '不符合现象' || h === '故障现象' || h === '现象描述') descCol = h;
+        if (h === '录入日期' || h === '问题录入日期' || h === '日期') dateCol = h;
+        if (h === '主单状态' || h === '状态') mainStatusCol = h;
+    }
+    console.log('📌 责任人列:', ownerCol || '未找到');
+
+    const filterValues = appConfig.statusFilter.values || ['1/5', '2/5', '3/5', '4/5', '5/5'];
+
+    const records = json.map((row, idx) => {
+        const get = (names) => { for (const n of names) { if (row[n] !== undefined && row[n] !== null && row[n] !== '') return String(row[n]).trim(); } return ''; };
+
+        const serialNo = (serialCol && row[serialCol] !== undefined && row[serialCol] !== '') ? String(row[serialCol]).trim() : get(['一元表序号', '一元表号']);
+        const improveStatus = (statusCol && row[statusCol] !== undefined && row[statusCol] !== '') ? String(row[statusCol]).trim() : get(['改善状态', '改善进度']);
+        const owner = (ownerCol && row[ownerCol] !== undefined && row[ownerCol] !== '') ? String(row[ownerCol]).trim() : get(['负责人', '责任人']);
+        const importance = (importanceCol && row[importanceCol] !== undefined && row[importanceCol] !== '') ? String(row[importanceCol]).trim() : get(['重要度', '重要性']);
+        const desc = (descCol && row[descCol] !== undefined && row[descCol] !== '') ? String(row[descCol]).trim() : get(['不符合现象', '故障现象']);
+        const date = (dateCol && row[dateCol] !== undefined && row[dateCol] !== '') ? String(row[dateCol]).trim() : get(['录入日期', '问题录入日期']);
+        const mainStatus = (mainStatusCol && row[mainStatusCol] !== undefined && row[mainStatusCol] !== '') ? String(row[mainStatusCol]).trim() : get(['主单状态', '状态']);
+
+        const isTracked = filterValues.includes(improveStatus);
+        if (!isTracked) return null;
+
+        const isOpen = isOpenStatus(improveStatus);
+        const isClosed = isClosedStatus(improveStatus);
+
+        const project = matchProject(serialNo);
+        const projectName = project ? project.name : '其他';
+        const projectId = project ? project.id : 'other';
+
+        const personInfo = getPersonInfo(owner);
+        const matchedDept = personInfo ? personInfo.department : '未匹配';
+        const matchedProf = personInfo ? personInfo.profession : '未匹配';
+
+        let swScore = 0, hwScore = 0, totalScore = 0;
+        if (isOpen) {
+            const scores = calcScores(importance);
+            swScore = scores.swScore;
+            hwScore = scores.hwScore;
+            totalScore = scores.totalScore;
+        }
+
+        return {
+            id: idx + 1,
+            mainStatus: mainStatus || '未知',
+            improveStatus: improveStatus || '未知',
+            serialNo: serialNo || '未知',
+            projectName: projectName,
+            projectId: projectId,
+            importance: importance || 'C',
+            owner: owner || '未知',
+            matchedDept: matchedDept,
+            matchedProf: matchedProf,
+            swScore: swScore,
+            hwScore: hwScore,
+            totalScore: totalScore,
+            desc: desc || '',
+            date: date || '',
+            isOpen: isOpen,
+            isClosed: isClosed,
+            isTracked: isTracked
+        };
+    }).filter(r => r !== null);
+
+    currentData = records;
+    safeSetText('fileInfo', '<i class="fas fa-file-excel"></i> ' + fileName + ' · ' + records.length + ' 条');
+    safeSetText('dataStatus', '已加载');
+    safeSetText('totalCount', records.length);
+    const uploadEl = document.getElementById('fileUploadArea');
+    if (uploadEl) uploadEl.style.display = 'none';
+    const contentEl = document.getElementById('contentArea');
+    if (contentEl) contentEl.classList.remove('hidden');
+    const loadingEl = document.getElementById('loadingIndicator');
+    if (loadingEl) loadingEl.classList.add('hidden');
+    const errorEl = document.getElementById('errorMsg');
+    if (errorEl) errorEl.classList.add('hidden');
+
+    renderAll(records);
+}
+
+function showError(msg) {
+    const loadingEl = document.getElementById('loadingIndicator');
+    if (loadingEl) loadingEl.classList.add('hidden');
+    const errorEl = document.getElementById('errorMsg');
+    if (errorEl) errorEl.classList.remove('hidden');
+    safeSetText('errorText', msg);
+    const contentEl = document.getElementById('contentArea');
+    if (contentEl) contentEl.classList.add('hidden');
+}
+
+// ============================================================
+// 分组工具
+// ============================================================
+function groupBy(arr, key) {
+    const map = new Map();
+    arr.forEach(item => { const v = (item[key] || '未分类').toString(); map.set(v, (map.get(v) || 0) + 1); });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+}
+
+function groupBySum(arr, key, sumKey) {
+    const map = new Map();
+    arr.forEach(item => { const v = (item[key] || '未分类').toString(); map.set(v, (map.get(v) || 0) + (item[sumKey] || 0)); });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+}
+
+// ============================================================
+// 渲染整体统计表格
+// ============================================================
+function renderStatsTable(openData) {
+    const tbody = document.getElementById('statsBody');
+    if (!tbody) return;
+
+    const projects = ['project1', 'project2', 'other'];
+    const projectNames = { 'project1': 'DH1基础车', 'project2': 'DH1长续航车', 'other': '其他项目' };
+    const centers = ['智能驾驶与座舱开发中心', '智能电子电气开发中心', '未匹配'];
+    const deptProfessions = {
+        '智能驾驶与座舱开发中心': ['智能座舱', '智能驾驶', '导航地图', '车云APP', 'OTA', 'TBOX'],
+        '智能电子电气开发中心': ['智能车控', 'EMS', 'EE架构', '智能硬件'],
+        '未匹配': ['未匹配']
+    };
+
+    let rows = [], totalCount = 0;
+
+    for (const proj of projects) {
+        const projectData = openData.filter(d => d.projectId === proj);
+        if (projectData.length === 0) continue;
+        for (const center of centers) {
+            const centerData = projectData.filter(d => d.matchedDept === center);
+            if (centerData.length === 0) continue;
+            const profs = deptProfessions[center] || ['其他'];
+            for (const prof of profs) {
+                const profData = centerData.filter(d => d.matchedProf === prof);
+                if (profData.length === 0) continue;
+                const count = profData.length;
+                const sw = profData.reduce((s, d) => s + d.swScore, 0);
+                const hw = profData.reduce((s, d) => s + d.hwScore, 0);
+                const total = profData.reduce((s, d) => s + d.totalScore, 0);
+                totalCount += count;
+                const s1 = profData.filter(d => d.importance === 'S1').length;
+                const s2 = profData.filter(d => d.importance === 'S2').length;
+                const s3 = profData.filter(d => d.importance === 'S3').length;
+                const s4 = profData.filter(d => d.importance === 'S4').length;
+                const a = profData.filter(d => d.importance === 'A').length;
+                const b = profData.filter(d => d.importance === 'B').length;
+                const c = profData.filter(d => d.importance === 'C').length;
+                rows.push({ project: projectNames[proj] || proj, center, profession: prof, count, sw, hw, total, s1, s2, s3, s4, a, b, c });
+            }
+        }
+    }
+
+    const projectOrder = { 'DH1基础车': 0, 'DH1长续航车': 1, '其他项目': 2 };
+    rows.sort((a, b) => {
+        const pa = projectOrder[a.project] || 99, pb = projectOrder[b.project] || 99;
+        if (pa !== pb) return pa - pb;
+        if (a.center !== b.center) return a.center.localeCompare(b.center);
+        return a.profession.localeCompare(b.profession);
+    });
+
+    if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:20px;">暂无数据</td></tr>';
+    } else {
+        tbody.innerHTML = rows.map(r => `
+            <tr>
+                <td><span class="tag ${r.project === 'DH1基础车' ? 'project1' : r.project === 'DH1长续航车' ? 'project2' : 'project-other'}">${r.project}</span></td>
+                <td style="color:${r.center === '智能驾驶与座舱开发中心' ? '#1d4ed8' : r.center === '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8'};font-weight:600;">${r.center}</td>
+                <td>${r.profession}</td>
+                <td><strong>${r.count}</strong></td>
+                <td class="score ${r.sw >= 5 ? 'high' : r.sw >= 1 ? 'medium' : 'low'}">${r.sw.toFixed(1)}</td>
+                <td class="score ${r.hw >= 5 ? 'high' : r.hw >= 1 ? 'medium' : 'low'}">${r.hw.toFixed(1)}</td>
+                <td class="score ${r.total >= 5 ? 'high' : r.total >= 1 ? 'medium' : 'low'}"><strong>${r.total.toFixed(1)}</strong></td>
+                <td>${r.s1}</td><td>${r.s2}</td><td>${r.s3}</td><td>${r.s4}</td>
+                <td>${r.a}</td><td>${r.b}</td><td>${r.c}</td>
+            </tr>
+        `).join('');
+    }
+    document.getElementById('statsCount').textContent = '共 ' + totalCount + ' 条';
+}
+
+// ============================================================
+// 渲染主函数
+// ============================================================
+function renderAll(data) {
+    if (!data || data.length === 0) {
+        safeSetHTML('kpiGrid', '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#94a3b8;">暂无数据</div>');
+        return;
+    }
+
+    const modules = displayConfig.modules || {};
+    const openData = data.filter(d => d.isOpen);
+    const closedData = data.filter(d => d.isClosed);
+    const trackedData = data.filter(d => d.isTracked);
+
+    const openCount = openData.length, closedCount = closedData.length, trackedCount = trackedData.length;
+
+    if (modules.statusBar !== false) {
+        safeSetText('openCount', openCount);
+        safeSetText('closedCount', closedCount);
+    }
+
+    const p1Data = openData.filter(d => d.projectId === 'project1');
+    const p2Data = openData.filter(d => d.projectId === 'project2');
+    const pOtherData = openData.filter(d => d.projectId === 'other');
+
+    if (modules.filterBar !== false) {
+        safeSetText('project1Badge', 'DH1基础车: ' + p1Data.length);
+        safeSetText('project2Badge', 'DH1长续航车: ' + p2Data.length);
+        safeSetText('projectOtherBadge', '其他: ' + pOtherData.length);
+    }
+
+    const center1Name = "智能驾驶与座舱开发中心", center2Name = "智能电子电气开发中心";
+    const center1Data = openData.filter(d => d.matchedDept === center1Name);
+    const center2Data = openData.filter(d => d.matchedDept === center2Name);
+    const c1Sw = center1Data.reduce((s, d) => s + d.swScore, 0), c1Hw = center1Data.reduce((s, d) => s + d.hwScore, 0), c1Total = center1Data.reduce((s, d) => s + d.totalScore, 0);
+    const c2Sw = center2Data.reduce((s, d) => s + d.swScore, 0), c2Hw = center2Data.reduce((s, d) => s + d.hwScore, 0), c2Total = center2Data.reduce((s, d) => s + d.totalScore, 0);
+    const otherSw = openData.filter(d => d.matchedDept !== center1Name && d.matchedDept !== center2Name).reduce((s, d) => s + d.swScore, 0);
+    const otherHw = openData.filter(d => d.matchedDept !== center1Name && d.matchedDept !== center2Name).reduce((s, d) => s + d.hwScore, 0);
+    const otherTotal = openData.filter(d => d.matchedDept !== center1Name && d.matchedDept !== center2Name).reduce((s, d) => s + d.totalScore, 0);
+
+    const totalSw = openData.reduce((s, d) => s + d.swScore, 0), totalHw = openData.reduce((s, d) => s + d.hwScore, 0), totalScore = openData.reduce((s, d) => s + d.totalScore, 0);
+    const avgScore = openCount > 0 ? (totalScore / openCount).toFixed(2) : '0';
+
+    if (modules.kpiGrid !== false) {
+        safeSetHTML('kpiGrid', `
+            <div class="kpi-card" style="border-left:4px solid #f97316;"><div class="label">📊 总问题数 (1/5~5/5)</div><div class="value">${trackedCount}</div><div class="sub">🟡未关闭 ${openCount} · ✅已关闭 ${closedCount}</div></div>
+            <div class="kpi-card" style="border-left:4px solid #f59e0b;"><div class="label">🟡 未关闭 (1/5~4/5)</div><div class="value">${openCount}</div><div class="sub">软件 <span class="tag-soft">${totalSw.toFixed(1)}</span> · 硬件 <span class="tag-hard">${totalHw.toFixed(1)}</span> · 总分 <span class="tag-total">${totalScore.toFixed(1)}</span></div></div>
+            <div class="kpi-card" style="border-left:4px solid #10b981;"><div class="label">✅ 已关闭 (5/5)</div><div class="value">${closedCount}</div><div class="sub">不计分 · 占比 ${trackedCount > 0 ? Math.round(closedCount/trackedCount*100) : 0}%</div></div>
+            <div class="kpi-card" style="border-left:4px solid #3b82f6;"><div class="label"><span class="dept-tag">${center1Name.substring(0,8)}</span></div><div class="value">${center1Data.length}</div><div class="sub">软件 <span class="tag-soft">${c1Sw.toFixed(1)}</span> · 硬件 <span class="tag-hard">${c1Hw.toFixed(1)}</span> · 总分 <span class="tag-total">${c1Total.toFixed(1)}</span></div></div>
+            <div class="kpi-card" style="border-left:4px solid #8b5cf6;"><div class="label"><span class="dept-tag purple">${center2Name.substring(0,8)}</span></div><div class="value">${center2Data.length}</div><div class="sub">软件 <span class="tag-soft">${c2Sw.toFixed(1)}</span> · 硬件 <span class="tag-hard">${c2Hw.toFixed(1)}</span> · 总分 <span class="tag-total">${c2Total.toFixed(1)}</span></div></div>
+            <div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">未匹配/其他</span></div><div class="value">${openData.filter(d => d.matchedDept !== center1Name && d.matchedDept !== center2Name).length}</div><div class="sub">软件 <span class="tag-soft">${otherSw.toFixed(1)}</span> · 硬件 <span class="tag-hard">${otherHw.toFixed(1)}</span> · 总分 <span class="tag-total">${otherTotal.toFixed(1)}</span></div></div>
+            <div class="kpi-card"><div class="label">未关闭总分</div><div class="value">${totalScore.toFixed(1)}</div><div class="sub">平均 ${avgScore} 分/条</div></div>
+        `);
+    }
+
+    if (modules.statsTable !== false) { renderStatsTable(openData); }
+
+    if (modules.tableWrapper !== false) {
+        safeSetText('recordCount', '共 ' + trackedCount + ' 条 (🟡' + openCount + ' · ✅' + closedCount + ')');
+        renderTable(data);
+    }
+
+    if (modules.chartGrid !== false) { renderCharts(openData); }
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    const display = data.slice(0, 100);
+    tbody.innerHTML = display.map(d => {
+        const isOpen = d.isOpen, isClosed = d.isClosed;
+        let rowClass = '', statusTag = '';
+        if (isOpen) { rowClass = 'filtered'; statusTag = '<span class="tag filter-matched">🟡未关闭</span>'; }
+        else if (isClosed) { rowClass = 'closed'; statusTag = '<span class="tag closed-tag">✅已关闭</span>'; }
+        else { statusTag = '<span class="tag">-</span>'; }
+        const projectClass = d.projectId === 'project1' ? 'project1' : d.projectId === 'project2' ? 'project2' : 'project-other';
+        const showScore = isOpen;
+        return `<tr class="${rowClass}">
+            <td>${d.id}</td>
+            <td><span class="status-badge ${d.mainStatus}">${d.mainStatus}</span></td>
+            <td>${statusTag} <span style="font-size:10px;color:#94a3b8;">${d.improveStatus}</span></td>
+            <td style="font-size:10px;">${d.serialNo}</td>
+            <td><span class="tag ${projectClass}">${d.projectName}</span></td>
+            <td><span class="importance ${d.importance}">${d.importance}</span></td>
+            <td style="font-size:11px;">${d.owner}</td>
+            <td style="font-size:10px;color:${d.matchedDept === '智能驾驶与座舱开发中心' ? '#1d4ed8' : d.matchedDept === '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8'};">${d.matchedDept}</td>
+            <td style="font-size:10px;">${d.matchedProf}</td>
+            <td class="score ${showScore ? (d.swScore >= 5 ? 'high' : d.swScore >= 1 ? 'medium' : 'low') : 'closed-score'}">${showScore ? d.swScore : '-'}</td>
+            <td class="score ${showScore ? (d.hwScore >= 5 ? 'high' : d.hwScore >= 1 ? 'medium' : 'low') : 'closed-score'}">${showScore ? d.hwScore : '-'}</td>
+            <td class="score ${showScore ? (d.totalScore >= 5 ? 'high' : d.totalScore >= 1 ? 'medium' : 'low') : 'closed-score'}">${showScore ? d.totalScore.toFixed(1) : '-'}</td>
+            <td style="max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px;" title="${d.desc}">${d.desc}</td>
+            <td style="font-size:10px;">${d.date}</td>
+        </tr>`;
+    }).join('');
+    if (data.length > 100) {
+        tbody.innerHTML += `<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:6px;font-size:11px;">... 仅显示前100条，共 ${data.length} 条</td></tr>`;
+    }
+}
+
+function renderCharts(openData) {
+    const statusSW = groupBySum(openData, 'mainStatus', 'swScore');
+    renderScoreBarChart('chartStatusSW', statusSW, '软件分', '#3b82f6');
+    const statusHW = groupBySum(openData, 'mainStatus', 'hwScore');
+    renderScoreBarChart('chartStatusHW', statusHW, '硬件分', '#10b981');
+    const impSW = groupBySum(openData, 'importance', 'swScore');
+    renderScoreBarChart('chartImportanceSW', impSW, '软件分', '#3b82f6');
+    const impHW = groupBySum(openData, 'importance', 'hwScore');
+    renderScoreBarChart('chartImportanceHW', impHW, '硬件分', '#10b981');
+    const deptData = groupBy(openData, 'matchedDept');
+    renderBarChart('chartDept', deptData, '#8b5cf6');
+    renderProjectCenterChart(openData);
+    renderGanttChart(openData);
+    const topData = openData.slice().sort((a, b) => b.totalScore - a.totalScore).slice(0, 5);
+    const topChartData = topData.map(d => [d.id + '#' + (d.owner.length > 6 ? d.owner.substring(0, 6) + '..' : d.owner), d.totalScore]);
+    renderScoreChart('chartScore', topChartData);
+    const sourceData = groupBy(openData, 'matchedProf');
+    renderBarChart('chartSource', sourceData, '#06b6d4');
+}
+
+function renderScoreBarChart(domId, data, label, color) {
+    const dom = document.getElementById(domId);
+    if (!dom) return;
+    if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+    const chart = echarts.init(dom);
+    chartInstances[domId] = chart;
+    const categories = data.map(item => item[0]), values = data.map(item => item[1]), total = values.reduce((a, b) => a + b, 0);
+    chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { const p = params[0]; const pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0; return `<strong>${p.name}</strong><br/>${label}: ${p.value.toFixed(1)} (${pct}%)`; } },
+        grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+        xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9, interval: 0 } },
+        yAxis: { type: 'value', name: label, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
+        series: [{ data: values, type: 'bar', barWidth: '40%', itemStyle: { borderRadius: [4, 4, 0, 0], color: color }, label: { show: true, position: 'top', fontSize: 9, fontWeight: 600, color: '#334155', formatter: function(p) { return p.value.toFixed(1); } } }]
+    });
+    const resizeHandler = () => chart.resize();
+    window.removeEventListener('resize', resizeHandler);
+    window.addEventListener('resize', resizeHandler);
+    chart._resizeHandler = resizeHandler;
+}
+
+function renderProjectCenterChart(openData) {
+    const dom = document.getElementById('chartProjectCompare');
+    if (!dom) return;
+    if (chartInstances['chartProjectCompare']) { chartInstances['chartProjectCompare'].dispose(); }
+    const chart = echarts.init(dom);
+    chartInstances['chartProjectCompare'] = chart;
+    const center1 = "智能驾驶与座舱开发中心", center2 = "智能电子电气开发中心";
+    const projects = ['project1', 'project2', 'other'], projectNames = ['DH1基础车', 'DH1长续航车', '其他项目'];
+    const c1Sw = projects.map(p => openData.filter(d => d.projectId === p && d.matchedDept === center1).reduce((s, d) => s + d.swScore, 0));
+    const c1Hw = projects.map(p => openData.filter(d => d.projectId === p && d.matchedDept === center1).reduce((s, d) => s + d.hwScore, 0));
+    const c2Sw = projects.map(p => openData.filter(d => d.projectId === p && d.matchedDept === center2).reduce((s, d) => s + d.swScore, 0));
+    const c2Hw = projects.map(p => openData.filter(d => d.projectId === p && d.matchedDept === center2).reduce((s, d) => s + d.hwScore, 0));
+    chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { let html = `<strong>${params[0].name}</strong><br/>`; params.forEach(p => { html += `${p.marker} ${p.seriesName}: ${p.value.toFixed(1)} 分<br/>`; }); return html; } },
+        legend: { data: [center1.substring(0,6)+'软件', center1.substring(0,6)+'硬件', center2.substring(0,6)+'软件', center2.substring(0,6)+'硬件'], bottom: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 8, fontSize: 9 },
+        grid: { left: '6%', right: '4%', top: '10%', bottom: '24%' },
+        xAxis: { type: 'category', data: projectNames },
+        yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
+        series: [
+            { name: center1.substring(0,6)+'软件', type: 'bar', data: c1Sw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } },
+            { name: center1.substring(0,6)+'硬件', type: 'bar', data: c1Hw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } },
+            { name: center2.substring(0,6)+'软件', type: 'bar', data: c2Sw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } },
+            { name: center2.substring(0,6)+'硬件', type: 'bar', data: c2Hw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } }
+        ]
+    });
+    const resizeHandler = () => chart.resize();
+    window.removeEventListener('resize', resizeHandler);
+    window.addEventListener('resize', resizeHandler);
+    chart._resizeHandler = resizeHandler;
+}
+
+function renderGanttChart(data) {
+    const dom = document.getElementById('chartGantt');
+    if (!dom) return;
+    if (chartInstances['chartGantt']) { chartInstances['chartGantt'].dispose(); }
+    const chart = echarts.init(dom);
+    chartInstances['chartGantt'] = chart;
+    const sorted = data.slice().sort((a, b) => b.totalScore - a.totalScore).slice(0, 30);
+    const names = sorted.map(d => `#${d.id} ${d.owner.substring(0,4)}`), swData = sorted.map(d => d.swScore), hwData = sorted.map(d => d.hwScore);
+    chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { const idx = params[0].dataIndex; const d = sorted[idx]; return `<strong>#${d.id} - ${d.owner}</strong><br/>中心: ${d.matchedDept}<br/>专业: ${d.matchedProf}<br/>改善: ${d.improveStatus}<br/>软件: ${d.swScore} · 硬件: ${d.hwScore}<br/><strong>总分: ${d.totalScore.toFixed(1)}</strong>`; } },
+        legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 8 },
+        grid: { left: '3%', right: '6%', top: '6%', bottom: '18%', containLabel: true },
+        xAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
+        yAxis: { type: 'category', data: names, axisLabel: { fontSize: 8, interval: 0 } },
+        series: [
+            { name: '软件分', type: 'bar', stack: 'total', data: swData, barWidth: '50%', itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] }, label: { show: true, position: 'insideRight', formatter: function(p) { return p.value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } },
+            { name: '硬件分', type: 'bar', stack: 'total', data: hwData, barWidth: '50%', itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] }, label: { show: true, position: 'insideRight', formatter: function(p) { return p.value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } }
+        ]
+    });
+    const resizeHandler = () => chart.resize();
+    window.removeEventListener('resize', resizeHandler);
+    window.addEventListener('resize', resizeHandler);
+    chart._resizeHandler = resizeHandler;
+}
+
+function renderBarChart(domId, data, color) {
+    const dom = document.getElementById(domId);
+    if (!dom) return;
+    if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+    const chart = echarts.init(dom);
+    chartInstances[domId] = chart;
+    const categories = data.map(item => item[0]), values = data.map(item => item[1]), total = values.reduce((a, b) => a + b, 0);
+    chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { const p = params[0]; const pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0; return `<strong>${p.name}</strong><br/>数量: ${p.value} (${pct}%)`; } },
+        grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+        xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9, interval: 0 } },
+        yAxis: { type: 'value', name: '数量', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
+        series: [{ data: values, type: 'bar', barWidth: '40%', itemStyle: { borderRadius: [4, 4, 0, 0], color: color }, label: { show: true, position: 'top', fontSize: 9, fontWeight: 600, color: '#334155' } }]
+    });
+    const resizeHandler = () => chart.resize();
+    window.removeEventListener('resize', resizeHandler);
+    window.addEventListener('resize', resizeHandler);
+    chart._resizeHandler = resizeHandler;
+}
+
+function renderScoreChart(domId, data) {
+    const dom = document.getElementById(domId);
+    if (!dom) return;
+    if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+    const chart = echarts.init(dom);
+    chartInstances[domId] = chart;
+    const categories = data.map(item => item[0]), values = data.map(item => item[1]);
+    chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { const p = params[0]; return `<strong>${p.name}</strong><br/>综合评分: ${p.value} 分`; } },
+        grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+        xAxis: { type: 'category', data: categories, axisLabel: { rotate: 15, fontSize: 8, interval: 0 } },
+        yAxis: { type: 'value', name: '总分', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
+        series: [{ data: values, type: 'bar', barWidth: '40%', itemStyle: { borderRadius: [4, 4, 0, 0], color: function(p) { const v = p.value; if (v >= 5) return '#dc2626'; if (v >= 1) return '#f59e0b'; return '#3b82f6'; } }, label: { show: true, position: 'top', fontSize: 9, fontWeight: 700, color: '#334155' } }]
+    });
+    const resizeHandler = () => chart.resize();
+    window.removeEventListener('resize', resizeHandler);
+    window.addEventListener('resize', resizeHandler);
+    chart._resizeHandler = resizeHandler;
+}
+
+// ============================================================
+// 页面启动
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(loadDisplayConfig, 50);
+    setTimeout(loadConfig, 150);
+    setTimeout(loadPersonConfig, 250);
+    setTimeout(loadDefaultExcel, 400);
+});
+</script>
+</body>
+</html>										
