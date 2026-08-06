@@ -1,0 +1,30 @@
+{
+  "weightConfigs": {
+    "software": {
+      "weights": {
+        "S1": 10,
+        "S2": 3,
+        "S3": 1,
+        "S4": 0.1,
+        "default": 0
+      }
+    },
+    "hardware": {
+      "weights": {
+        "A": 10,
+        "B": 5,
+        "C": 1,
+        "default": 0
+      }
+    }
+  },
+  "projectConfig": {
+    "projects": [
+      { "id": "project2", "name": "DH1长续航车", "keyword": "DH1 75KWh版-" },
+      { "id": "project1", "name": "DH1基础车", "keyword": "DH1-" }
+    ]
+  },
+  "statusFilter": {
+    "values": ["1/5", "2/5", "3/5", "4/5", "5/5"]
+  }
+}
