@@ -109,6 +109,7 @@
         .tag.project1 { background: #dbeafe; color: #1d4ed8; }
         .tag.project2 { background: #ede9fe; color: #7c3aed; }
         .tag.project-other { background: #f1f5f9; color: #94a3b8; }
+        .tag.other-center { background: #f1f5f9; color: #94a3b8; }
         .score { font-weight: 700; font-size: 11px; }
         .score.high { color: #dc2626; }
         .score.medium { color: #f59e0b; }
@@ -239,6 +240,8 @@ var currentData = [];
 var chartInstances = {};
 var personMap = {};
 var appConfig = null;
+var allCenters = [];
+var allProfessions = [];
 
 // ============================================================
 // 安全设置
@@ -290,6 +293,8 @@ function loadAllConfigs() {
             var count = Object.keys(personMap).length;
             safeSetText('personCountBadge', '已加载: ' + count + ' 人');
             console.log('✅ personConfig.json 加载成功，人数:', count);
+            // 收集所有中心和专业
+            collectCentersAndProfessions(data);
             checkAllConfigsLoaded();
         })
         .catch(function(err) {
@@ -297,6 +302,24 @@ function loadAllConfigs() {
             safeSetText('personCountBadge', '⚠️ 未加载');
             showError('personConfig.json 加载失败: ' + err.message);
         });
+}
+
+function collectCentersAndProfessions(data) {
+    allCenters = [];
+    allProfessions = [];
+    for (var dept in data) {
+        if (data.hasOwnProperty(dept)) {
+            allCenters.push(dept);
+            var professions = data[dept];
+            for (var prof in professions) {
+                if (professions.hasOwnProperty(prof)) {
+                    if (allProfessions.indexOf(prof) === -1) {
+                        allProfessions.push(prof);
+                    }
+                }
+            }
+        }
+    }
 }
 
 function buildPersonMap(data) {
@@ -319,9 +342,7 @@ function buildPersonMap(data) {
 function checkAllConfigsLoaded() {
     if (appConfig && personMap) {
         console.log('✅ 所有配置加载完成');
-        // 更新项目标签
         updateProjectBadges();
-        // 配置加载完成后，自动加载 Excel
         autoLoadExcel();
     }
 }
@@ -339,10 +360,32 @@ function updateProjectBadges() {
 }
 
 // ============================================================
+// ★★★ 获取匹配中心（如果不在配置中则显示"其他中心"）★★★
+// ============================================================
+function getMatchedCenter(dept) {
+    if (!dept || dept === '' || dept === '未知') return '其他中心';
+    // 检查是否在配置的中心列表中
+    for (var i = 0; i < allCenters.length; i++) {
+        if (dept === allCenters[i]) return dept;
+    }
+    return '其他中心';
+}
+
+// ============================================================
+// ★★★ 获取匹配专业（如果不在配置中则显示"其他专业"）★★★
+// ============================================================
+function getMatchedProfession(prof) {
+    if (!prof || prof === '' || prof === '未知') return '其他专业';
+    for (var i = 0; i < allProfessions.length; i++) {
+        if (prof === allProfessions[i]) return prof;
+    }
+    return '其他专业';
+}
+
+// ============================================================
 // ★★★ 自动加载 Excel ★★★
 // ============================================================
 function autoLoadExcel() {
-    // 先尝试 .xlsx，再尝试 .xls
     fetch('data.xlsx')
         .then(function(res) {
             if (res.ok) {
@@ -352,7 +395,6 @@ function autoLoadExcel() {
                     processWorkbook(wb, 'data.xlsx');
                 });
             } else {
-                // 尝试 .xls
                 return fetch('data.xls').then(function(res2) {
                     if (res2.ok) {
                         return res2.arrayBuffer().then(function(buffer) {
@@ -367,15 +409,11 @@ function autoLoadExcel() {
             }
         })
         .catch(function() {
-            // 自动加载失败，显示手动选择界面
             console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面');
             showManualSelect();
         });
 }
 
-// ============================================================
-// ★★★ 显示手动选择界面 ★★★
-// ============================================================
 function showManualSelect() {
     document.getElementById('fileUploadArea').classList.remove('hidden');
     document.getElementById('fileUploadArea').style.display = 'block';
@@ -475,8 +513,12 @@ function processWorkbook(wb, fileName) {
         var projectId = project ? project.id : 'other';
 
         var personInfo = getPersonInfo(owner);
-        var matchedDept = personInfo ? personInfo.department : '未匹配';
-        var matchedProf = personInfo ? personInfo.profession : '未匹配';
+        var matchedDept = personInfo ? personInfo.department : null;
+        var matchedProf = personInfo ? personInfo.profession : null;
+
+        // ★★★ 使用友好的显示名称 ★★★
+        var displayDept = getMatchedCenter(matchedDept);
+        var displayProf = getMatchedProfession(matchedProf);
 
         var swScore = 0, hwScore = 0, totalScore = 0;
         if (isOpen) {
@@ -495,8 +537,8 @@ function processWorkbook(wb, fileName) {
             projectId: projectId,
             importance: importance || 'C',
             owner: owner || '未知',
-            matchedDept: matchedDept,
-            matchedProf: matchedProf,
+            matchedDept: displayDept,
+            matchedProf: displayProf,
             swScore: swScore,
             hwScore: hwScore,
             totalScore: totalScore,
@@ -516,7 +558,9 @@ function processWorkbook(wb, fileName) {
     document.getElementById('loadingIndicator').classList.add('hidden');
     document.getElementById('loadingIndicator').style.display = 'none';
     document.getElementById('errorMsg').classList.add('hidden');
-    safeSetText('fileInfo', '<i class="fas fa-file-excel"></i> ' + fileName + ' · ' + records.length + ' 条');
+    
+    // ★★★ 修复：显示文件名，而不是图标 ★★★
+    safeSetText('fileInfo', '📊 ' + fileName + ' · ' + records.length + ' 条');
     safeSetText('dataStatus', '已加载');
     safeSetText('totalCount', records.length);
 
@@ -618,11 +662,11 @@ function renderStatsTable(openData) {
     projectIds.push('other');
     projectNames['other'] = '其他项目';
 
-    var centers = ['智能驾驶与座舱开发中心', '智能电子电气开发中心', '未匹配'];
+    var centers = ['智能驾驶与座舱开发中心', '智能电子电气开发中心', '其他中心'];
     var deptProfessions = {
         '智能驾驶与座舱开发中心': ['智能座舱', '智能驾驶', '导航地图', '车云APP', 'OTA', 'TBOX'],
         '智能电子电气开发中心': ['智能车控', 'EMS', 'EE架构', '智能硬件'],
-        '未匹配': ['未匹配']
+        '其他中心': ['其他专业']
     };
 
     var rows = [];
@@ -750,9 +794,10 @@ function renderAll(data) {
         safeSetText(projectBadges[bi], label + ': ' + pData.length);
     }
 
-    var center1Name = "智能驾驶与座舱开发中心", center2Name = "智能电子电气开发中心";
+    var center1Name = "智能驾驶与座舱开发中心", center2Name = "智能电子电气开发中心", centerOther = "其他中心";
     var center1Data = openData.filter(function(d) { return d.matchedDept === center1Name; });
     var center2Data = openData.filter(function(d) { return d.matchedDept === center2Name; });
+    var centerOtherData = openData.filter(function(d) { return d.matchedDept === centerOther; });
 
     var c1Sw = 0, c1Hw = 0, c1Total = 0;
     for (var i = 0; i < center1Data.length; i++) {
@@ -766,13 +811,11 @@ function renderAll(data) {
         c2Hw += center2Data[j].hwScore;
         c2Total += center2Data[j].totalScore;
     }
-
-    var otherData = openData.filter(function(d) { return d.matchedDept !== center1Name && d.matchedDept !== center2Name; });
     var otherSw = 0, otherHw = 0, otherTotal = 0;
-    for (var k = 0; k < otherData.length; k++) {
-        otherSw += otherData[k].swScore;
-        otherHw += otherData[k].hwScore;
-        otherTotal += otherData[k].totalScore;
+    for (var k = 0; k < centerOtherData.length; k++) {
+        otherSw += centerOtherData[k].swScore;
+        otherHw += centerOtherData[k].hwScore;
+        otherTotal += centerOtherData[k].totalScore;
     }
 
     var totalSw = 0, totalHw = 0, totalScore = 0;
@@ -789,7 +832,7 @@ function renderAll(data) {
         '<div class="kpi-card" style="border-left:4px solid #10b981;"><div class="label">✅ 已关闭 (5/5)</div><div class="value">' + closedCount + '</div><div class="sub">不计分 · 占比 ' + (trackedCount > 0 ? Math.round(closedCount / trackedCount * 100) : 0) + '%</div></div>' +
         '<div class="kpi-card" style="border-left:4px solid #3b82f6;"><div class="label"><span class="dept-tag">' + center1Name.substring(0, 8) + '</span></div><div class="value">' + center1Data.length + '</div><div class="sub">软件 <span class="tag-soft">' + c1Sw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + c1Hw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + c1Total.toFixed(1) + '</span></div></div>' +
         '<div class="kpi-card" style="border-left:4px solid #8b5cf6;"><div class="label"><span class="dept-tag purple">' + center2Name.substring(0, 8) + '</span></div><div class="value">' + center2Data.length + '</div><div class="sub">软件 <span class="tag-soft">' + c2Sw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + c2Hw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + c2Total.toFixed(1) + '</span></div></div>' +
-        '<div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">未匹配/其他</span></div><div class="value">' + otherData.length + '</div><div class="sub">软件 <span class="tag-soft">' + otherSw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + otherHw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + otherTotal.toFixed(1) + '</span></div></div>' +
+        '<div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">' + centerOther + '</span></div><div class="value">' + centerOtherData.length + '</div><div class="sub">软件 <span class="tag-soft">' + otherSw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + otherHw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + otherTotal.toFixed(1) + '</span></div></div>' +
         '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
     );
 
@@ -912,7 +955,7 @@ function renderProjectCenterChart(openData) {
     if (chartInstances['chartProjectCompare']) { chartInstances['chartProjectCompare'].dispose(); }
     var chart = echarts.init(dom);
     chartInstances['chartProjectCompare'] = chart;
-    var center1 = "智能驾驶与座舱开发中心", center2 = "智能电子电气开发中心";
+    var center1 = "智能驾驶与座舱开发中心", center2 = "智能电子电气开发中心", centerOther = "其他中心";
 
     var projectConfig = appConfig ? appConfig.projectConfig : null;
     var projectIds = [];
@@ -927,15 +970,19 @@ function renderProjectCenterChart(openData) {
     projectIds.push('other');
     projectNames.push('其他项目');
 
-    var c1Sw = [], c1Hw = [], c2Sw = [], c2Hw = [];
+    var c1Sw = [], c1Hw = [], c2Sw = [], c2Hw = [], cOtherSw = [], cOtherHw = [];
     for (var pi = 0; pi < projectIds.length; pi++) {
         var pid = projectIds[pi];
         var d1 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center1; });
         var d2 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center2; });
-        var s1 = 0, h1 = 0, s2 = 0, h2 = 0;
+        var dOther = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === centerOther; });
+        var s1 = 0, h1 = 0, s2 = 0, h2 = 0, sOther = 0, hOther = 0;
         for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore; h1 += d1[j].hwScore; }
         for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore; h2 += d2[k].hwScore; }
-        c1Sw.push(s1); c1Hw.push(h1); c2Sw.push(s2); c2Hw.push(h2);
+        for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore; hOther += dOther[l].hwScore; }
+        c1Sw.push(s1); c1Hw.push(h1);
+        c2Sw.push(s2); c2Hw.push(h2);
+        cOtherSw.push(sOther); cOtherHw.push(hOther);
     }
 
     var short1 = center1.substring(0, 6);
@@ -954,21 +1001,23 @@ function renderProjectCenterChart(openData) {
             }
         },
         legend: {
-            data: [short1 + '软件', short1 + '硬件', short2 + '软件', short2 + '硬件'],
+            data: [short1 + '软件', short1 + '硬件', short2 + '软件', short2 + '硬件', '其他中心软件', '其他中心硬件'],
             bottom: 0,
             icon: 'roundRect',
             itemWidth: 10,
             itemHeight: 8,
-            fontSize: 9
+            fontSize: 8
         },
-        grid: { left: '6%', right: '4%', top: '10%', bottom: '24%' },
+        grid: { left: '6%', right: '4%', top: '10%', bottom: '28%' },
         xAxis: { type: 'category', data: projectNames },
         yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
         series: [
-            { name: short1 + '软件', type: 'bar', data: c1Sw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } },
-            { name: short1 + '硬件', type: 'bar', data: c1Hw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } },
-            { name: short2 + '软件', type: 'bar', data: c2Sw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } },
-            { name: short2 + '硬件', type: 'bar', data: c2Hw, barWidth: '18%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' }, label: { show: true, position: 'top', fontSize: 8, fontWeight: 600 } }
+            { name: short1 + '软件', type: 'bar', data: c1Sw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+            { name: short1 + '硬件', type: 'bar', data: c1Hw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+            { name: short2 + '软件', type: 'bar', data: c2Sw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+            { name: short2 + '硬件', type: 'bar', data: c2Hw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+            { name: '其他中心软件', type: 'bar', data: cOtherSw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#94a3b8' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+            { name: '其他中心硬件', type: 'bar', data: cOtherHw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#cbd5e1' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } }
         ]
     });
     var resizeHandler = function() { chart.resize(); };
@@ -1105,10 +1154,8 @@ function renderScoreChart(domId, data) {
 // ★★★ 页面启动 ★★★
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    // 加载配置
     loadAllConfigs();
 
-    // 显示界面
     setTimeout(function() {
         document.getElementById('loadingIndicator').classList.add('hidden');
         document.getElementById('loadingIndicator').style.display = 'none';
