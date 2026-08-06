@@ -22,10 +22,6 @@
         .header .btn i { margin-right: 6px; }
         .header .btn-outline { background: white; color: #3b82f6; border: 1.5px solid #3b82f6; }
         .header .btn-outline:hover { background: #eff6ff; }
-        .header .btn-success { background: #10b981; }
-        .header .btn-success:hover { background: #059669; }
-        .header .btn-person { background: #8b5cf6; color: white; border: none; padding: 7px 18px; border-radius: 40px; font-size: 13px; cursor: pointer; transition: 0.2s; font-weight: 500; }
-        .header .btn-person:hover { background: #7c3aed; }
         .header .info-badge { font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 14px; border-radius: 30px; white-space: nowrap; }
 
         .status-bar { display: flex; gap: 16px; flex-wrap: wrap; background: white; padding: 10px 18px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e9eef3; align-items: center; font-size: 13px; }
@@ -131,6 +127,7 @@
         .error-msg { text-align: center; padding: 30px 20px; color: #dc2626; }
         .error-msg i { font-size: 32px; display: block; margin-bottom: 10px; }
         .hidden { display: none !important; }
+        .file-upload-area.hidden { display: none !important; }
 
         @media (max-width: 1200px) { .chart-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 800px) { .chart-grid { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } .header { flex-direction: column; align-items: stretch; } .header .tools { justify-content: center; } }
@@ -143,8 +140,7 @@
     <div id="header" class="header">
         <h1><i class="fas fa-brain"></i>缺陷智能分析看板</h1>
         <div class="tools">
-            <span class="info-badge" id="fileInfo"><i class="fas fa-file-excel"></i> 请选择文件</span>
-            <!-- ★★★ 只保留一个"选择 Excel"按钮 ★★★ -->
+            <span class="info-badge" id="fileInfo"><i class="fas fa-file-excel"></i> 加载中...</span>
             <button class="btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-upload"></i> 选择 Excel</button>
             <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)" style="display:none;">
         </div>
@@ -175,12 +171,12 @@
     </div>
 
     <!-- ===== 上传区域 ===== -->
-    <div id="fileUploadArea" class="file-upload-area">
+    <div id="fileUploadArea" class="file-upload-area hidden">
         <i class="fas fa-file-excel" style="font-size:38px;color:#3b82f6;display:block;margin-bottom:10px;"></i>
-        <label for="fileInput"><i class="fas fa-upload"></i> 选择 Excel 数据文件</label>
-        <p>支持 .xlsx 或 .xls 格式</p>
-        <div class="file-types">📄 支持 .xlsx · .xls</div>
-        <div style="font-size:12px;color:#94a3b8;margin-top:6px;" id="fileNameDisplay"></div>
+        <p style="font-size:16px;color:#64748b;margin-bottom:8px;">📄 未找到 data.xlsx 或 data.xls</p>
+        <label for="fileInput"><i class="fas fa-upload"></i> 手动选择 Excel 文件</label>
+        <p style="font-size:13px;color:#94a3b8;margin-top:8px;">支持 .xlsx 或 .xls 格式</p>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;" id="fileNameDisplay"></div>
     </div>
 
     <!-- ===== 加载/错误 ===== -->
@@ -233,7 +229,7 @@
 
 <script>
 // ============================================================
-// ★★★ 所有配置从 JSON 加载，代码中无默认值 ★★★
+// ★★★ 所有配置从 JSON 加载 ★★★
 // ============================================================
 
 // ============================================================
@@ -243,7 +239,6 @@ var currentData = [];
 var chartInstances = {};
 var personMap = {};
 var appConfig = null;
-var displayConfig = null;
 
 // ============================================================
 // 安全设置
@@ -322,11 +317,12 @@ function buildPersonMap(data) {
 }
 
 function checkAllConfigsLoaded() {
-    // 检查所有配置是否加载完成
     if (appConfig && personMap) {
         console.log('✅ 所有配置加载完成');
         // 更新项目标签
         updateProjectBadges();
+        // 配置加载完成后，自动加载 Excel
+        autoLoadExcel();
     }
 }
 
@@ -343,61 +339,64 @@ function updateProjectBadges() {
 }
 
 // ============================================================
-// 项目匹配
+// ★★★ 自动加载 Excel ★★★
 // ============================================================
-function matchProject(serialNo) {
-    if (!serialNo || !appConfig) return null;
-    var projects = appConfig.projectConfig.projects || [];
-    for (var i = 0; i < projects.length; i++) {
-        if (serialNo.includes(projects[i].keyword)) return projects[i];
-    }
-    return null;
+function autoLoadExcel() {
+    // 先尝试 .xlsx，再尝试 .xls
+    fetch('data.xlsx')
+        .then(function(res) {
+            if (res.ok) {
+                return res.arrayBuffer().then(function(buffer) {
+                    console.log('✅ 自动加载 data.xlsx 成功');
+                    var wb = XLSX.read(buffer, { type: 'array' });
+                    processWorkbook(wb, 'data.xlsx');
+                });
+            } else {
+                // 尝试 .xls
+                return fetch('data.xls').then(function(res2) {
+                    if (res2.ok) {
+                        return res2.arrayBuffer().then(function(buffer) {
+                            console.log('✅ 自动加载 data.xls 成功');
+                            var wb = XLSX.read(buffer, { type: 'array' });
+                            processWorkbook(wb, 'data.xls');
+                        });
+                    } else {
+                        throw new Error('文件不存在');
+                    }
+                });
+            }
+        })
+        .catch(function() {
+            // 自动加载失败，显示手动选择界面
+            console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面');
+            showManualSelect();
+        });
 }
 
 // ============================================================
-// 状态判断
+// ★★★ 显示手动选择界面 ★★★
 // ============================================================
-function isOpenStatus(s) {
-    return s === '1/5' || s === '2/5' || s === '3/5' || s === '4/5';
-}
-function isClosedStatus(s) {
-    return s === '5/5';
-}
-function isTrackedStatus(s) {
-    return isOpenStatus(s) || isClosedStatus(s);
-}
-
-// ============================================================
-// 计算分值
-// ============================================================
-function calcScores(importance) {
-    if (!appConfig) return { swScore: 0, hwScore: 0, totalScore: 0 };
-    var sw = appConfig.weightConfigs.software.weights || {};
-    var hw = appConfig.weightConfigs.hardware.weights || {};
-    var swScore = sw[importance] !== undefined ? sw[importance] : (sw.default || 0);
-    var hwScore = hw[importance] !== undefined ? hw[importance] : (hw.default || 0);
-    return { swScore: swScore, hwScore: hwScore, totalScore: swScore + hwScore };
+function showManualSelect() {
+    document.getElementById('fileUploadArea').classList.remove('hidden');
+    document.getElementById('fileUploadArea').style.display = 'block';
+    document.getElementById('contentArea').classList.remove('hidden');
+    document.getElementById('contentArea').style.display = 'block';
+    document.getElementById('loadingIndicator').classList.add('hidden');
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
+    document.getElementById('dataStatus').textContent = '请选择文件';
+    safeSetText('totalCount', '0');
 }
 
 // ============================================================
-// 人员匹配
-// ============================================================
-function getPersonInfo(owner) {
-    if (!owner || owner === '' || owner === '未知') return null;
-    if (personMap[owner]) return personMap[owner];
-    return null;
-}
-
-// ============================================================
-// Excel 加载
+// 手动选择 Excel
 // ============================================================
 function handleFileSelect(event) {
     var file = event.target.files[0];
     if (!file) return;
 
-    // 检查配置是否已加载
     if (!appConfig || Object.keys(personMap).length === 0) {
-        alert('配置尚未加载完成，请等待配置加载完毕后再选择文件。');
+        alert('配置尚未加载完成，请稍候再试。');
         return;
     }
 
@@ -468,8 +467,8 @@ function processWorkbook(wb, fileName) {
         var isTracked = filterValues.indexOf(improveStatus) !== -1;
         if (!isTracked) continue;
 
-        var isOpen = isOpenStatus(improveStatus);
-        var isClosed = isClosedStatus(improveStatus);
+        var isOpen = (improveStatus === '1/5' || improveStatus === '2/5' || improveStatus === '3/5' || improveStatus === '4/5');
+        var isClosed = (improveStatus === '5/5');
 
         var project = matchProject(serialNo);
         var projectName = project ? project.name : '其他';
@@ -510,13 +509,16 @@ function processWorkbook(wb, fileName) {
     }
 
     currentData = records;
+    document.getElementById('fileUploadArea').classList.add('hidden');
+    document.getElementById('fileUploadArea').style.display = 'none';
+    document.getElementById('contentArea').classList.remove('hidden');
+    document.getElementById('contentArea').style.display = 'block';
+    document.getElementById('loadingIndicator').classList.add('hidden');
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('errorMsg').classList.add('hidden');
     safeSetText('fileInfo', '<i class="fas fa-file-excel"></i> ' + fileName + ' · ' + records.length + ' 条');
     safeSetText('dataStatus', '已加载');
     safeSetText('totalCount', records.length);
-    document.getElementById('fileUploadArea').style.display = 'none';
-    document.getElementById('contentArea').classList.remove('hidden');
-    document.getElementById('loadingIndicator').classList.add('hidden');
-    document.getElementById('errorMsg').classList.add('hidden');
 
     renderAll(records);
 }
@@ -526,6 +528,39 @@ function showError(msg) {
     document.getElementById('errorMsg').classList.remove('hidden');
     safeSetText('errorText', msg);
     document.getElementById('contentArea').classList.add('hidden');
+}
+
+// ============================================================
+// 项目匹配
+// ============================================================
+function matchProject(serialNo) {
+    if (!serialNo || !appConfig) return null;
+    var projects = appConfig.projectConfig.projects || [];
+    for (var i = 0; i < projects.length; i++) {
+        if (serialNo.includes(projects[i].keyword)) return projects[i];
+    }
+    return null;
+}
+
+// ============================================================
+// 计算分值
+// ============================================================
+function calcScores(importance) {
+    if (!appConfig) return { swScore: 0, hwScore: 0, totalScore: 0 };
+    var sw = appConfig.weightConfigs.software.weights || {};
+    var hw = appConfig.weightConfigs.hardware.weights || {};
+    var swScore = sw[importance] !== undefined ? sw[importance] : (sw.default || 0);
+    var hwScore = hw[importance] !== undefined ? hw[importance] : (hw.default || 0);
+    return { swScore: swScore, hwScore: hwScore, totalScore: swScore + hwScore };
+}
+
+// ============================================================
+// 人员匹配
+// ============================================================
+function getPersonInfo(owner) {
+    if (!owner || owner === '' || owner === '未知') return null;
+    if (personMap[owner]) return personMap[owner];
+    return null;
 }
 
 // ============================================================
@@ -570,17 +605,17 @@ function renderStatsTable(openData) {
     var tbody = document.getElementById('statsBody');
     if (!tbody) return;
 
-    var projects = [];
-    var projectNames = {};
     var projectConfig = appConfig ? appConfig.projectConfig : null;
+    var projectIds = [];
+    var projectNames = {};
     if (projectConfig && projectConfig.projects) {
         for (var i = 0; i < projectConfig.projects.length; i++) {
             var p = projectConfig.projects[i];
-            projects.push(p.id);
+            projectIds.push(p.id);
             projectNames[p.id] = p.name;
         }
     }
-    projects.push('other');
+    projectIds.push('other');
     projectNames['other'] = '其他项目';
 
     var centers = ['智能驾驶与座舱开发中心', '智能电子电气开发中心', '未匹配'];
@@ -593,8 +628,8 @@ function renderStatsTable(openData) {
     var rows = [];
     var totalCount = 0;
 
-    for (var pi = 0; pi < projects.length; pi++) {
-        var proj = projects[pi];
+    for (var pi = 0; pi < projectIds.length; pi++) {
+        var proj = projectIds[pi];
         var projectData = openData.filter(function(d) { return d.projectId === proj; });
         if (projectData.length === 0) continue;
         for (var ci = 0; ci < centers.length; ci++) {
@@ -638,10 +673,9 @@ function renderStatsTable(openData) {
         }
     }
 
-    // 按项目排序
     var orderMap = {};
-    for (var oi = 0; oi < projects.length; oi++) {
-        orderMap[projects[oi]] = oi;
+    for (var oi = 0; oi < projectIds.length; oi++) {
+        orderMap[projectIds[oi]] = oi;
     }
     rows.sort(function(a, b) {
         var pa = orderMap[a.project] !== undefined ? orderMap[a.project] : 99;
@@ -1071,20 +1105,16 @@ function renderScoreChart(domId, data) {
 // ★★★ 页面启动 ★★★
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    // 加载所有配置
+    // 加载配置
     loadAllConfigs();
 
     // 显示界面
     setTimeout(function() {
         document.getElementById('loadingIndicator').classList.add('hidden');
         document.getElementById('loadingIndicator').style.display = 'none';
-        document.getElementById('fileUploadArea').style.display = 'block';
         document.getElementById('contentArea').classList.remove('hidden');
         document.getElementById('contentArea').style.display = 'block';
-        document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
-        document.getElementById('dataStatus').textContent = '请选择文件';
-        console.log('✅ 页面加载完成，请点击"选择 Excel"按钮加载数据');
-        console.log('ℹ️ 如果配置加载失败，请检查 config.json 和 personConfig.json 是否存在');
+        console.log('✅ 页面加载完成');
     }, 500);
 });
 </script>
