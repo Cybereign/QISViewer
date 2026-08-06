@@ -400,7 +400,7 @@ function autoLoadExcel() {
                     .then(function(res2) {
                         if (res2.ok) {
                             return res2.arrayBuffer().then(function(buffer) {
-                                console.log('✅ 自动加载 data.xls 成功');
+                                console.log('✅ 自动加载 data.xls 成功 WHJ YES');
                                 var wb = XLSX.read(buffer, { type: 'array' });
                                 processWorkbook(wb, 'data.xls');
                             });
