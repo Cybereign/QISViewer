@@ -218,11 +218,11 @@
         <!-- ===== 目标差值图表 ===== -->
         <div id="targetChartRow" class="chart-grid" style="margin-bottom:16px;">
             <div id="targetChartContainer" class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1基础车 目标差值</div>
+                <div class="chart-title"><i class="fas fa-bullseye"></i> 项目1 目标差值</div>
                 <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
             </div>
             <div id="targetChartContainer2" class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1长续航车 目标差值</div>
+                <div class="chart-title"><i class="fas fa-bullseye"></i> 项目2 目标差值</div>
                 <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
             </div>
             <div class="chart-card" style="visibility:hidden;"></div>
@@ -1056,7 +1056,7 @@ function renderStatsTable(openData) {
 }
 
 // ============================================================
-// ★★★ 目标差值图表（显示 实际值 - 目标值）★★★
+// ★★★ 目标差值图表（分段柱状图：绿色达标 + 红色超标）★★★
 // ============================================================
 function renderTargetCharts(openData) {
     var modules = displayConfig.modules || {};
@@ -1071,6 +1071,10 @@ function renderTargetCharts(openData) {
     var stages = appConfig.stageTarget.stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
 
+    // 图表容器列表
+    var chartContainers = ['chartTarget1', 'chartTarget2'];
+    var containerIndex = 0;
+
     for (var pi = 0; pi < projects.length; pi++) {
         var proj = projects[pi];
         var projectId = proj.id;
@@ -1078,12 +1082,23 @@ function renderTargetCharts(openData) {
         var stageId = proj.stage || 'SG10';
         var stage = stages[stageId];
 
-        var domId = (pi === 0) ? 'chartTarget1' : 'chartTarget2';
+        // 只处理前两个项目（对应两个图表容器）
+        if (containerIndex >= chartContainers.length) break;
+
+        var domId = chartContainers[containerIndex];
         var dom = document.getElementById(domId);
         if (!dom) {
             console.warn('⚠️ 找不到图表容器:', domId);
+            containerIndex++;
             continue;
         }
+
+        // ★★★ 动态更新图表标题 ★★★
+        var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
+        if (titleEl) {
+            titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
+        }
+
         if (chartInstances[domId]) {
             chartInstances[domId].dispose();
         }
@@ -1096,7 +1111,8 @@ function renderTargetCharts(openData) {
         var categories = [];
         var actualValues = [];
         var targetValues = [];
-        var diffValues = [];
+        var greenParts = [];  // 达标部分（实际 ≤ 目标）
+        var redParts = [];    // 超标部分（实际 > 目标）
 
         if (!stage) {
             chart.setOption({
@@ -1108,6 +1124,7 @@ function renderTargetCharts(openData) {
                 }
             });
             console.warn('⚠️ 阶段配置不存在:', stageId);
+            containerIndex++;
             continue;
         }
 
@@ -1120,6 +1137,7 @@ function renderTargetCharts(openData) {
                     textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
                 }
             });
+            containerIndex++;
             continue;
         }
 
@@ -1153,9 +1171,12 @@ function renderTargetCharts(openData) {
                     categories.push(displayName);
                     actualValues.push(Math.round(profActual2 * 10) / 10);
                     targetValues.push(Math.round(profTarget * 10) / 10);
-                    // ★★★ 计算差值 = 实际值 - 目标值 ★★★
-                    var diff = profActual2 - profTarget;
-                    diffValues.push(Math.round(diff * 10) / 10);
+
+                    // ★★★ 分段：绿色 = min(实际, 目标)，红色 = max(0, 实际 - 目标) ★★★
+                    var green = Math.min(profActual2, profTarget);
+                    var red = Math.max(0, profActual2 - profTarget);
+                    greenParts.push(Math.round(green * 10) / 10);
+                    redParts.push(Math.round(red * 10) / 10);
                 }
             }
         }
@@ -1169,19 +1190,11 @@ function renderTargetCharts(openData) {
                     textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
                 }
             });
+            containerIndex++;
             continue;
         }
 
-        // ★★★ 柱状图颜色：差值 <= 0 绿色（达标），差值 > 0 红色（不达标）★★★
-        var barColors = [];
-        for (var i = 0; i < diffValues.length; i++) {
-            if (diffValues[i] <= 0) {
-                barColors.push('#10b981');  // 绿色：达标
-            } else {
-                barColors.push('#ef4444');  // 红色：不达标
-            }
-        }
-
+        // ★★★ 分段堆叠柱状图 ★★★
         chart.setOption({
             tooltip: {
                 trigger: 'axis',
@@ -1191,7 +1204,9 @@ function renderTargetCharts(openData) {
                     var name = categories[idx] || '';
                     var actual = actualValues[idx] || 0;
                     var target = targetValues[idx] || 0;
-                    var diff = diffValues[idx] || 0;
+                    var green = greenParts[idx] || 0;
+                    var red = redParts[idx] || 0;
+                    var diff = actual - target;
                     var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
                     var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
                     var color = diff <= 0 ? '#10b981' : '#ef4444';
@@ -1203,7 +1218,7 @@ function renderTargetCharts(openData) {
                 }
             },
             legend: {
-                data: ['实际分值', '目标分值'],
+                data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
                 bottom: 0,
                 icon: 'roundRect',
                 itemWidth: 12,
@@ -1236,48 +1251,65 @@ function renderTargetCharts(openData) {
             },
             series: [
                 {
-                    name: '实际分值',
+                    name: '✅ 达标部分 (≤目标)',
                     type: 'bar',
-                    data: actualValues,
-                    barWidth: '35%',
+                    stack: 'total',
+                    data: greenParts,
+                    barWidth: '40%',
                     itemStyle: {
                         borderRadius: [3, 3, 0, 0],
-                        color: function(params) {
-                            return barColors[params.dataIndex];
-                        }
+                        color: '#10b981'
                     },
                     label: {
                         show: true,
-                        position: 'top',
+                        position: 'inside',
                         fontSize: 8,
-                        fontWeight: 700,
-                        color: '#334155',
+                        fontWeight: 600,
+                        color: 'white',
                         formatter: function(params) {
-                            var idx = params.dataIndex;
-                            var diff = diffValues[idx] || 0;
-                            var label = diff <= 0 ? '✅' : '❌';
-                            return label + ' ' + params.value.toFixed(1);
+                            return params.value > 0 ? params.value.toFixed(1) : '';
                         }
                     }
                 },
                 {
-                    name: '目标分值',
+                    name: '❌ 超标部分 (>目标)',
+                    type: 'bar',
+                    stack: 'total',
+                    data: redParts,
+                    barWidth: '40%',
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#ef4444'
+                    },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) {
+                            return params.value > 0 ? '+' + params.value.toFixed(1) : '';
+                        }
+                    }
+                },
+                {
+                    name: '目标值',
                     type: 'bar',
                     data: targetValues,
-                    barWidth: '35%',
+                    barWidth: '40%',
                     itemStyle: {
                         borderRadius: [3, 3, 0, 0],
                         color: '#94a3b8',
-                        opacity: 0.4
+                        opacity: 0.3
                     },
                     label: {
                         show: true,
                         position: 'top',
                         fontSize: 7,
                         fontWeight: 600,
-                        color: '#94a3b8',
+                        color: '#64748b',
                         formatter: function(params) {
-                            return params.value.toFixed(1);
+                            return '🎯 ' + params.value.toFixed(1);
                         }
                     }
                 }
@@ -1288,6 +1320,8 @@ function renderTargetCharts(openData) {
         window.removeEventListener('resize', resizeHandler);
         window.addEventListener('resize', resizeHandler);
         chart._resizeHandler = resizeHandler;
+
+        containerIndex++;
     }
 }
 
