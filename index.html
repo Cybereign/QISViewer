@@ -84,7 +84,7 @@
         .table-header h3 { font-size: 14px; font-weight: 600; }
         .table-header h3 i { color: #3b82f6; margin-right: 6px; }
         .table-header .filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .table-header .filter-group label { font-size: 12px; color: #94a3b8; }
+        .table-header .filter-group label { font-size: 12px; color: #94a3b8; white-space: nowrap; }
         .table-header .filter-group select { padding: 4px 10px; border-radius: 6px; border: 1px solid #d1d9e6; font-size: 12px; background: white; max-width: 200px; cursor: pointer; }
         .table-header .filter-group select:focus { outline: none; border-color: #3b82f6; }
         .table-scroll { overflow-x: auto; border-radius: 10px; max-height: 460px; overflow-y: auto; }
@@ -145,6 +145,10 @@
         @media (max-width: 1200px) { .chart-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 800px) { .chart-grid { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } .header { flex-direction: column; align-items: stretch; } .header .tools { justify-content: center; } }
         @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+        
+        /* 三级筛选样式 */
+        .filter-group select { min-width: 120px; }
+        .filter-group select:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -161,10 +165,10 @@
 
     <!-- ===== 状态栏 ===== -->
     <div id="statusBar" class="status-bar">
-        <div class="item"><span class="dot green"></span><span class="label">数据:</span><span class="value" id="dataStatus">未加载</span></div>
-        <div class="item"><span class="dot blue"></span><span class="label">总数:</span><span class="value" id="totalCount">0</span></div>
-        <div class="item"><span class="dot orange"></span><span class="label">未关闭:</span><span class="value" id="openCount">0</span></div>
-        <div class="item"><span class="dot green"></span><span class="label">已关闭:</span><span class="value" id="closedCount">0</span></div>
+        <div class="item"><span class="dot green"></span><span class="label">数据:</span><span class="value" id="dataStatus">加载中...</span></div>
+        <div class="item"><span class="dot blue"></span><span class="label">总数:</span><span class="value" id="totalCount">-</span></div>
+        <div class="item"><span class="dot orange"></span><span class="label">未关闭:</span><span class="value" id="openCount">-</span></div>
+        <div class="item"><span class="dot green"></span><span class="label">已关闭:</span><span class="value" id="closedCount">-</span></div>
         <div class="item"><span class="dot yellow"></span><span class="label">软件权重:</span><span class="value" id="swWeightStatus">加载中...</span></div>
         <div class="item"><span class="dot red"></span><span class="label">硬件权重:</span><span class="value" id="hwWeightStatus">加载中...</span></div>
         <div class="item"><span class="dot purple"></span><span class="label">项目数:</span><span class="value" id="projectStatus">加载中...</span></div>
@@ -268,24 +272,27 @@
             </div>
         </div>
 
-        <!-- ===== 明细表格（含筛选器） ===== -->
+        <!-- ===== 明细表格（含三级筛选：项目、中心、人员） ===== -->
         <div id="tableWrapper" class="table-wrapper">
             <div class="table-header">
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <h3><i class="fas fa-list-ul"></i> 缺陷明细</h3>
                     <div class="filter-group">
-                        <label>👤 筛选:</label>
-                        <select id="ownerFilter" onchange="applyOwnerFilter()">
-                            <option value="">全部人员</option>
+                        <label>📁 项目:</label>
+                        <select id="projectFilter" onchange="applyFilters()">
+                            <option value="">全部项目</option>
                         </select>
                     </div>
                     <div class="filter-group">
                         <label>📌 中心:</label>
-                        <select id="centerFilter" onchange="applyOwnerFilter()">
+                        <select id="centerFilter" onchange="applyFilters()">
                             <option value="">全部中心</option>
-                            <option value="智能驾驶与座舱开发中心">智能驾驶与座舱开发中心</option>
-                            <option value="智能电子电气开发中心">智能电子电气开发中心</option>
-                            <option value="其他中心">其他中心</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>👤 人员:</label>
+                        <select id="ownerFilter" onchange="applyFilters()">
+                            <option value="">全部人员</option>
                         </select>
                     </div>
                 </div>
@@ -321,6 +328,7 @@ var allCenters = [];
 var allProfessions = [];
 var excelLoading = false;
 var displayConfig = {};
+var configLoaded = { project: false, person: false, display: false };
 
 // ============================================================
 // ★★★ applyDisplayConfig 必须在 loadAllConfigs 之前定义 ★★★
@@ -385,12 +393,13 @@ function loadAllConfigs() {
         })
         .then(function(data) {
             appConfig = data;
+            configLoaded.project = true;
             safeSetText('swWeightStatus', '已配置');
             safeSetText('hwWeightStatus', '已配置');
             var projects = appConfig.projectConfig.projects || [];
             safeSetText('projectStatus', projects.length + ' 个');
             console.log('✅ projectConfig.json 加载成功');
-            tryStartApp();
+            checkAllConfigsLoaded();
         })
         .catch(function(err) {
             console.error('❌ projectConfig.json 加载失败:', err.message);
@@ -408,11 +417,12 @@ function loadAllConfigs() {
         })
         .then(function(data) {
             buildPersonMap(data);
+            configLoaded.person = true;
             var count = Object.keys(personMap).length;
             safeSetText('personCountBadge', '已加载: ' + count + ' 人');
             console.log('✅ personConfig.json 加载成功，人数:', count);
             collectCentersAndProfessions(data);
-            tryStartApp();
+            checkAllConfigsLoaded();
         })
         .catch(function(err) {
             console.error('❌ personConfig.json 加载失败:', err.message);
@@ -428,23 +438,31 @@ function loadAllConfigs() {
         })
         .then(function(data) {
             displayConfig = data;
+            configLoaded.display = true;
             applyDisplayConfig();
             console.log('✅ displayConfig.json 加载成功');
+            checkAllConfigsLoaded();
         })
         .catch(function() {
             displayConfig = { modules: { header: true, statusBar: false, filterBar: true, kpiGrid: true, statsTable: true, targetChart: true, chartGrid: true, tableWrapper: true, footerNote: true, fileUploadArea: true, loadingIndicator: true, errorMsg: true } };
+            configLoaded.display = true;
             applyDisplayConfig();
             console.log('ℹ️ 使用内置 displayConfig');
+            checkAllConfigsLoaded();
         });
 }
 
-// ★★★ tryStartApp ★★★
-function tryStartApp() {
-    if (appConfig && Object.keys(personMap).length > 0) {
-        console.log('✅ 所有配置加载完成');
+// ★★★ 检查所有配置是否加载完成 ★★★
+function checkAllConfigsLoaded() {
+    if (configLoaded.project && configLoaded.person && configLoaded.display) {
+        console.log('✅ 所有配置加载完成，开始加载数据');
         updateProjectBadges();
         if (!window._appStarted) {
             window._appStarted = true;
+            document.getElementById('contentArea').classList.remove('hidden');
+            document.getElementById('contentArea').style.display = 'block';
+            document.getElementById('loadingIndicator').classList.add('hidden');
+            document.getElementById('loadingIndicator').style.display = 'none';
             autoLoadExcel();
         }
     }
@@ -517,42 +535,29 @@ function getMatchedProfession(prof) {
 }
 
 // ============================================================
-// 获取项目阶段信息
-// ============================================================
-function getProjectStage(projectId) {
-    if (!appConfig) return null;
-    var projects = appConfig.projectConfig.projects || [];
-    for (var i = 0; i < projects.length; i++) {
-        if (projects[i].id === projectId) {
-            var stageId = projects[i].stage || 'SG10';
-            var stages = appConfig.stageTarget.stages || {};
-            return stages[stageId] || null;
-        }
-    }
-    return null;
-}
-
-// ============================================================
 // ★★★ 自动加载 Excel ★★★
 // ============================================================
 function autoLoadExcel() {
     if (excelLoading) return;
     excelLoading = true;
 
-    fetch('data.xls')
+    console.log('🔍 开始查找 Excel 文件...');
+
+    fetch('data.xls', { cache: 'reload' })
         .then(function(res) {
             if (res.ok) {
+                console.log('✅ 找到 data.xls');
                 return res.arrayBuffer().then(function(buffer) {
-                    console.log('✅ 自动加载 data.xls 成功');
                     var wb = XLSX.read(buffer, { type: 'array' });
                     processWorkbook(wb, 'data.xls');
                 });
             } else {
+                console.log('ℹ️ data.xls 不存在，尝试 data.xlsx');
                 return fetch('data.xlsx', { cache: 'reload' })
                     .then(function(res2) {
                         if (res2.ok) {
+                            console.log('✅ 找到 data.xlsx');
                             return res2.arrayBuffer().then(function(buffer) {
-                                console.log('✅ 自动加载 data.xlsx 成功');
                                 var wb = XLSX.read(buffer, { type: 'array' });
                                 processWorkbook(wb, 'data.xlsx');
                             });
@@ -562,8 +567,9 @@ function autoLoadExcel() {
                     });
             }
         })
-        .catch(function() {
-            console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面');
+        .catch(function(err) {
+            console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面', err.message);
+            excelLoading = false;
             showManualSelect();
         });
 }
@@ -571,10 +577,6 @@ function autoLoadExcel() {
 function showManualSelect() {
     document.getElementById('fileUploadArea').classList.remove('hidden');
     document.getElementById('fileUploadArea').style.display = 'block';
-    document.getElementById('contentArea').classList.remove('hidden');
-    document.getElementById('contentArea').style.display = 'block';
-    document.getElementById('loadingIndicator').classList.add('hidden');
-    document.getElementById('loadingIndicator').style.display = 'none';
     document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
     document.getElementById('dataStatus').textContent = '请选择文件';
     safeSetText('totalCount', '0');
@@ -707,8 +709,6 @@ function processWorkbook(wb, fileName) {
 
     document.getElementById('fileUploadArea').classList.add('hidden');
     document.getElementById('fileUploadArea').style.display = 'none';
-    document.getElementById('contentArea').classList.remove('hidden');
-    document.getElementById('contentArea').style.display = 'block';
     document.getElementById('loadingIndicator').classList.add('hidden');
     document.getElementById('loadingIndicator').style.display = 'none';
     document.getElementById('errorMsg').classList.add('hidden');
@@ -796,72 +796,122 @@ function groupBySum(arr, key, sumKey) {
 }
 
 // ============================================================
-// ★★★ 更新人员筛选下拉列表 ★★★
+// ★★★ 更新三级筛选下拉列表 ★★★
 // ============================================================
-function updateOwnerFilter(data) {
-    var filterSelect = document.getElementById('ownerFilter');
-    if (!filterSelect) return;
-
-    var currentValue = filterSelect.value;
-
-    var ownerMap = {};
-    for (var i = 0; i < data.length; i++) {
-        var d = data[i];
-        if (d.owner && d.owner !== '' && d.owner !== '未知') {
-            var key = d.owner;
-            if (!ownerMap[key]) {
-                ownerMap[key] = {
-                    name: key,
-                    dept: d.matchedDept,
-                    isCenter: (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心')
-                };
+function updateFilterOptions(data) {
+    // 1. 更新项目筛选
+    var projectFilter = document.getElementById('projectFilter');
+    if (projectFilter) {
+        var currentProject = projectFilter.value;
+        var projectMap = {};
+        for (var i = 0; i < data.length; i++) {
+            var d = data[i];
+            if (d.projectName && d.projectName !== '') {
+                projectMap[d.projectName] = true;
             }
         }
-    }
-
-    var ownerList = [];
-    for (var k in ownerMap) {
-        if (ownerMap.hasOwnProperty(k)) {
-            ownerList.push(ownerMap[k]);
+        var projectList = Object.keys(projectMap).sort();
+        var html = '<option value="">全部项目</option>';
+        for (var j = 0; j < projectList.length; j++) {
+            html += '<option value="' + projectList[j] + '">' + projectList[j] + '</option>';
+        }
+        projectFilter.innerHTML = html;
+        if (currentProject && projectMap[currentProject]) {
+            projectFilter.value = currentProject;
         }
     }
 
-    ownerList.sort(function(a, b) {
-        if (a.isCenter && !b.isCenter) return -1;
-        if (!a.isCenter && b.isCenter) return 1;
-        return a.name.localeCompare(b.name);
-    });
-
-    var html = '<option value="">全部人员</option>';
-    for (var j = 0; j < ownerList.length; j++) {
-        var o = ownerList[j];
-        html += '<option value="' + o.name + '">' + o.name + '</option>';
+    // 2. 更新中心筛选
+    var centerFilter = document.getElementById('centerFilter');
+    if (centerFilter) {
+        var currentCenter = centerFilter.value;
+        var centerMap = {};
+        for (var i = 0; i < data.length; i++) {
+            var d = data[i];
+            if (d.matchedDept && d.matchedDept !== '') {
+                centerMap[d.matchedDept] = true;
+            }
+        }
+        var centerList = Object.keys(centerMap).sort();
+        // 把两个主要中心放前面
+        var priorityCenters = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+        var sortedCenters = [];
+        for (var k = 0; k < priorityCenters.length; k++) {
+            if (centerMap[priorityCenters[k]]) {
+                sortedCenters.push(priorityCenters[k]);
+                delete centerMap[priorityCenters[k]];
+            }
+        }
+        var otherCenters = Object.keys(centerMap).sort();
+        sortedCenters = sortedCenters.concat(otherCenters);
+        
+        var html = '<option value="">全部中心</option>';
+        for (var j = 0; j < sortedCenters.length; j++) {
+            html += '<option value="' + sortedCenters[j] + '">' + sortedCenters[j] + '</option>';
+        }
+        centerFilter.innerHTML = html;
+        if (currentCenter && centerMap[currentCenter]) {
+            centerFilter.value = currentCenter;
+        }
     }
-    filterSelect.innerHTML = html;
 
-    if (currentValue) {
-        filterSelect.value = currentValue;
+    // 3. 更新人员筛选
+    var ownerFilter = document.getElementById('ownerFilter');
+    if (ownerFilter) {
+        var currentOwner = ownerFilter.value;
+        var ownerMap = {};
+        for (var i = 0; i < data.length; i++) {
+            var d = data[i];
+            if (d.owner && d.owner !== '' && d.owner !== '未知') {
+                // 根据中心排序，主要中心人员放前面
+                var isPriority = (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心');
+                if (!ownerMap[d.owner]) {
+                    ownerMap[d.owner] = { name: d.owner, priority: isPriority };
+                }
+            }
+        }
+        var ownerList = [];
+        for (var key in ownerMap) {
+            if (ownerMap.hasOwnProperty(key)) {
+                ownerList.push(ownerMap[key]);
+            }
+        }
+        ownerList.sort(function(a, b) {
+            if (a.priority && !b.priority) return -1;
+            if (!a.priority && b.priority) return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
+        var html = '<option value="">全部人员</option>';
+        for (var j = 0; j < ownerList.length; j++) {
+            html += '<option value="' + ownerList[j].name + '">' + (ownerList[j].priority ? '⭐ ' : '') + ownerList[j].name + '</option>';
+        }
+        ownerFilter.innerHTML = html;
+        if (currentOwner && ownerMap[currentOwner]) {
+            ownerFilter.value = currentOwner;
+        }
     }
 }
 
 // ============================================================
-// ★★★ 应用人员筛选 ★★★
+// ★★★ 应用三级筛选 ★★★
 // ============================================================
-function applyOwnerFilter() {
-    var filterSelect = document.getElementById('ownerFilter');
-    var centerSelect = document.getElementById('centerFilter');
-    if (!filterSelect || !centerSelect) return;
+function applyFilters() {
+    var projectFilter = document.getElementById('projectFilter');
+    var centerFilter = document.getElementById('centerFilter');
+    var ownerFilter = document.getElementById('ownerFilter');
+    
+    var projectValue = projectFilter ? projectFilter.value : '';
+    var centerValue = centerFilter ? centerFilter.value : '';
+    var ownerValue = ownerFilter ? ownerFilter.value : '';
 
-    var ownerValue = filterSelect.value;
-    var centerValue = centerSelect.value;
-
-    renderTableWithFilter(currentData, ownerValue, centerValue);
+    renderTableWithFilters(currentData, projectValue, centerValue, ownerValue);
 }
 
 // ============================================================
-// ★★★ 带筛选的表格渲染 ★★★
+// ★★★ 带三级筛选的表格渲染 ★★★
 // ============================================================
-function renderTableWithFilter(data, ownerFilter, centerFilter) {
+function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter) {
     var tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
@@ -873,11 +923,15 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         return a.id - b.id;
     });
 
-    if (ownerFilter) {
-        sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
+    // 应用筛选
+    if (projectFilter) {
+        sortedData = sortedData.filter(function(d) { return d.projectName === projectFilter; });
     }
     if (centerFilter) {
         sortedData = sortedData.filter(function(d) { return d.matchedDept === centerFilter; });
+    }
+    if (ownerFilter) {
+        sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
     }
 
     document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
@@ -929,7 +983,7 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
 }
 
 // ============================================================
-// ★★★ 渲染整体统计表格（动态获取所有中心和专业）★★★
+// ★★★ 渲染整体统计表格 ★★★
 // ============================================================
 function renderStatsTable(openData) {
     var tbody = document.getElementById('statsBody');
@@ -948,7 +1002,6 @@ function renderStatsTable(openData) {
     projectIds.push('other');
     projectNames['other'] = '其他项目';
 
-    // ★★★ 动态获取所有中心和专业 ★★★
     var centerMap = {};
     for (var i = 0; i < openData.length; i++) {
         var d = openData[i];
@@ -1056,7 +1109,7 @@ function renderStatsTable(openData) {
 }
 
 // ============================================================
-// ★★★ 目标差值图表（分段柱状图：绿色达标 + 红色超标）★★★
+// ★★★ 目标差值图表（修复Tooltip显示）★★★
 // ============================================================
 function renderTargetCharts(openData) {
     var modules = displayConfig.modules || {};
@@ -1071,7 +1124,6 @@ function renderTargetCharts(openData) {
     var stages = appConfig.stageTarget.stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
 
-    // 图表容器列表
     var chartContainers = ['chartTarget1', 'chartTarget2'];
     var containerIndex = 0;
 
@@ -1082,7 +1134,6 @@ function renderTargetCharts(openData) {
         var stageId = proj.stage || 'SG10';
         var stage = stages[stageId];
 
-        // 只处理前两个项目（对应两个图表容器）
         if (containerIndex >= chartContainers.length) break;
 
         var domId = chartContainers[containerIndex];
@@ -1093,7 +1144,6 @@ function renderTargetCharts(openData) {
             continue;
         }
 
-        // ★★★ 动态更新图表标题 ★★★
         var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
         if (titleEl) {
             titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
@@ -1111,8 +1161,8 @@ function renderTargetCharts(openData) {
         var categories = [];
         var actualValues = [];
         var targetValues = [];
-        var greenParts = [];  // 达标部分（实际 ≤ 目标）
-        var redParts = [];    // 超标部分（实际 > 目标）
+        var greenParts = [];
+        var redParts = [];
 
         if (!stage) {
             chart.setOption({
@@ -1123,7 +1173,6 @@ function renderTargetCharts(openData) {
                     textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
                 }
             });
-            console.warn('⚠️ 阶段配置不存在:', stageId);
             containerIndex++;
             continue;
         }
@@ -1167,12 +1216,12 @@ function renderTargetCharts(openData) {
                     var ratio = profs[profName2] || 0;
                     var profTarget = target * ratio;
                     var profActual2 = profActuals[profName2] || 0;
-                    var displayName = cName.substring(0, 6) + '-' + profName2;
+                    var shortName = cName.replace('智能驾驶与座舱开发中心', '座舱').replace('智能电子电气开发中心', '电子电气');
+                    var displayName = shortName + '-' + profName2;
                     categories.push(displayName);
                     actualValues.push(Math.round(profActual2 * 10) / 10);
                     targetValues.push(Math.round(profTarget * 10) / 10);
 
-                    // ★★★ 分段：绿色 = min(实际, 目标)，红色 = max(0, 实际 - 目标) ★★★
                     var green = Math.min(profActual2, profTarget);
                     var red = Math.max(0, profActual2 - profTarget);
                     greenParts.push(Math.round(green * 10) / 10);
@@ -1194,13 +1243,20 @@ function renderTargetCharts(openData) {
             continue;
         }
 
-        // ★★★ 分段堆叠柱状图 ★★★
+        // ★★★ 修复Tooltip ★★★
         chart.setOption({
             tooltip: {
                 trigger: 'axis',
                 axisPointer: { type: 'shadow' },
                 formatter: function(params) {
-                    var idx = params[0].dataIndex;
+                    // 从params中获取正确的数据索引
+                    var idx = 0;
+                    for (var p = 0; p < params.length; p++) {
+                        if (params[p].dataIndex !== undefined) {
+                            idx = params[p].dataIndex;
+                            break;
+                        }
+                    }
                     var name = categories[idx] || '';
                     var actual = actualValues[idx] || 0;
                     var target = targetValues[idx] || 0;
@@ -1409,12 +1465,11 @@ function renderAll(data) {
     renderStatsTable(openData);
     renderTargetCharts(openData);
 
-    var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
-    updateOwnerFilter(allData);
-
-    var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
-    var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
-    renderTableWithFilter(data, ownerFilter, centerFilter);
+    // 更新三级筛选下拉列表
+    updateFilterOptions(data);
+    
+    // 应用筛选渲染表格
+    applyFilters();
 
     renderCharts(openData);
 }
@@ -1447,7 +1502,7 @@ function renderCharts(openData) {
 }
 
 // ============================================================
-// 图表渲染函数（保持不变）
+// 图表渲染函数
 // ============================================================
 function renderScoreBarChart(domId, data, label, color) {
     var dom = document.getElementById(domId);
@@ -1694,15 +1749,8 @@ function renderScoreChart(domId, data) {
 // ★★★ 页面启动 ★★★
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 页面启动，开始加载配置...');
     loadAllConfigs();
-
-    setTimeout(function() {
-        document.getElementById('loadingIndicator').classList.add('hidden');
-        document.getElementById('loadingIndicator').style.display = 'none';
-        document.getElementById('contentArea').classList.remove('hidden');
-        document.getElementById('contentArea').style.display = 'block';
-        console.log('✅ 页面加载完成');
-    }, 500);
 });
 </script>
 </body>
