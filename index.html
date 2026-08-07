@@ -1659,8 +1659,9 @@
                 { id: 'dept', title: '匹配中心分布', icon: 'fa-building', height: '200px', type: 'dept' },
                 { id: 'projectCompare', title: '各中心软件/硬件分值', icon: 'fa-chart-bar', height: '200px',
                     type: 'projectCompare' },
-                { id: 'gantt', title: '缺陷评分甘特图', icon: 'fa-project-diagram', height: '280px', type: 'gantt' },
-                { id: 'scoreTop', title: '综合评分 Top5（人员汇总）', icon: 'fa-star', height: '200px', type: 'scoreTop' },
+                { id: 'gantt', title: '缺陷评分甘特图（人员汇总TOP10）', icon: 'fa-project-diagram', height: '280px',
+                    type: 'gantt' },
+                { id: 'scoreTop', title: '综合评分 TOP10（人员汇总）', icon: 'fa-star', height: '200px', type: 'scoreTop' },
                 { id: 'source', title: '专业分布', icon: 'fa-bug', height: '200px', type: 'source' }
             ];
 
@@ -2003,26 +2004,29 @@
             var deptData = groupBy(projectData, 'matchedDept');
             renderBarChart('chart_' + projectId + '_dept', deptData, '#8b5cf6');
 
-            // 各中心软件/硬件分值
+            // 各中心软件/硬件分值（保留一位小数）
             renderProjectCenterChartSingle('chart_' + projectId + '_projectCompare', projectData);
 
-            // 缺陷评分甘特图
-            renderGanttChartSingle('chart_' + projectId + '_gantt', projectData);
+            // ★★★ 缺陷评分甘特图（人员汇总TOP10）★★★
+            renderGanttChartPersonSummary('chart_' + projectId + '_gantt', projectData);
 
-            // ★★★ 综合评分 Top5（按人员汇总）★★★
+            // ★★★ 综合评分 Top10（按人员汇总，保留一位小数）★★★
             var ownerScoreMap = {};
+            var ownerCountMap = {};
             for (var i = 0; i < projectData.length; i++) {
                 var d = projectData[i];
                 if (!ownerScoreMap[d.owner]) {
                     ownerScoreMap[d.owner] = 0;
+                    ownerCountMap[d.owner] = 0;
                 }
                 ownerScoreMap[d.owner] += d.totalScore;
+                ownerCountMap[d.owner]++;
             }
             var topData = Object.keys(ownerScoreMap).map(function(key) {
-                return [key, ownerScoreMap[key]];
+                return [key, Math.round(ownerScoreMap[key] * 10) / 10];
             }).sort(function(a, b) {
                 return b[1] - a[1];
-            }).slice(0, 5);
+            }).slice(0, 10);
             renderScoreChart('chart_' + projectId + '_scoreTop', topData);
 
             // 专业分布
@@ -2031,7 +2035,7 @@
         }
 
         // ============================================================
-        // ★★★ 单项目各中心软件/硬件分值 ★★★
+        // ★★★ 单项目各中心软件/硬件分值（保留一位小数）★★★
         // ============================================================
         function renderProjectCenterChartSingle(domId, projectData) {
             var dom = document.getElementById(domId);
@@ -2093,24 +2097,30 @@
                 yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
                             type: 'dashed' } } },
                 series: [
-                    { name: short1 + '软件', type: 'bar', data: [s1], barWidth: '14%',
+                    { name: short1 + '软件', type: 'bar', data: [Math.round(s1 * 10) / 10], barWidth: '14%',
                         itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: short1 + '硬件', type: 'bar', data: [h1], barWidth: '14%',
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600, formatter: function(p) { return p
+                                .value.toFixed(1); } } },
+                    { name: short1 + '硬件', type: 'bar', data: [Math.round(h1 * 10) / 10], barWidth: '14%',
                         itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: short2 + '软件', type: 'bar', data: [s2], barWidth: '14%',
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600, formatter: function(p) { return p
+                                .value.toFixed(1); } } },
+                    { name: short2 + '软件', type: 'bar', data: [Math.round(s2 * 10) / 10], barWidth: '14%',
                         itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: short2 + '硬件', type: 'bar', data: [h2], barWidth: '14%',
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600, formatter: function(p) { return p
+                                .value.toFixed(1); } } },
+                    { name: short2 + '硬件', type: 'bar', data: [Math.round(h2 * 10) / 10], barWidth: '14%',
                         itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: '其他中心软件', type: 'bar', data: [sOther], barWidth: '14%',
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600, formatter: function(p) { return p
+                                .value.toFixed(1); } } },
+                    { name: '其他中心软件', type: 'bar', data: [Math.round(sOther * 10) / 10], barWidth: '14%',
                         itemStyle: { borderRadius: [2, 2, 0, 0], color: '#94a3b8' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: '其他中心硬件', type: 'bar', data: [hOther], barWidth: '14%',
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600, formatter: function(p) { return p
+                                .value.toFixed(1); } } },
+                    { name: '其他中心硬件', type: 'bar', data: [Math.round(hOther * 10) / 10], barWidth: '14%',
                         itemStyle: { borderRadius: [2, 2, 0, 0], color: '#cbd5e1' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } }
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600, formatter: function(p) { return p
+                                .value.toFixed(1); } } }
                 ]
             });
 
@@ -2121,54 +2131,130 @@
         }
 
         // ============================================================
-        // ★★★ 单项目甘特图 ★★★
+        // ★★★ 缺陷评分甘特图（人员汇总TOP10）★★★
+        // 按人员汇总软件分、硬件分、综合评分，显示TOP10
+        // Tooltip 显示：姓名、问题数、软件分、硬件分、综合评分
         // ============================================================
-        function renderGanttChartSingle(domId, projectData) {
+        function renderGanttChartPersonSummary(domId, projectData) {
             var dom = document.getElementById(domId);
             if (!dom) return;
             if (chartInstances[domId]) { chartInstances[domId].dispose(); }
             var chart = echarts.init(dom);
             chartInstances[domId] = chart;
-            var sorted = projectData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 30);
-            var names = [],
-                swData = [],
-                hwData = [];
-            for (var i = 0; i < sorted.length; i++) {
-                var d = sorted[i];
-                names.push('#' + d.id + ' ' + d.owner.substring(0, 4));
-                swData.push(d.swScore);
-                hwData.push(d.hwScore);
+
+            // 按人员汇总
+            var personMap = {};
+            for (var i = 0; i < projectData.length; i++) {
+                var d = projectData[i];
+                if (!personMap[d.owner]) {
+                    personMap[d.owner] = {
+                        sw: 0,
+                        hw: 0,
+                        total: 0,
+                        count: 0
+                    };
+                }
+                personMap[d.owner].sw += d.swScore;
+                personMap[d.owner].hw += d.hwScore;
+                personMap[d.owner].total += d.totalScore;
+                personMap[d.owner].count++;
             }
+
+            // 转为数组并排序
+            var personList = Object.keys(personMap).map(function(key) {
+                return {
+                    name: key,
+                    sw: Math.round(personMap[key].sw * 10) / 10,
+                    hw: Math.round(personMap[key].hw * 10) / 10,
+                    total: Math.round(personMap[key].total * 10) / 10,
+                    count: personMap[key].count
+                };
+            }).sort(function(a, b) {
+                return b.total - a.total;
+            }).slice(0, 10);
+
+            if (personList.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: '暂无数据',
+                        left: 'center',
+                        top: 'center',
+                        textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                    }
+                });
+                return;
+            }
+
+            var names = [];
+            var swData = [];
+            var hwData = [];
+
+            for (var i = 0; i < personList.length; i++) {
+                var p = personList[i];
+                names.push(p.name);
+                swData.push(p.sw);
+                hwData.push(p.hw);
+            }
+
+            // ★★★ 存储人员信息用于 Tooltip ★★★
+            var tooltipData = personList.slice();
+
             chart.setOption({
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: { type: 'shadow' },
                     formatter: function(params) {
                         var idx = params[0].dataIndex;
-                        var d = sorted[idx];
-                        return '<strong>#' + d.id + ' - ' + d.owner + '</strong><br/>中心: ' + d
-                            .matchedDept + '<br/>专业: ' + d.matchedProf + '<br/>改善: ' + d
-                            .improveStatus + '<br/>软件: ' + d.swScore + ' · 硬件: ' + d.hwScore +
-                            '<br/><strong>总分: ' + d.totalScore.toFixed(1) + '</strong>';
+                        var p = tooltipData[idx];
+                        if (!p) return '';
+                        return '<strong>' + p.name + '</strong><br/>' +
+                            '问题数: <strong>' + p.count + '</strong> 条<br/>' +
+                            '软件分: <strong>' + p.sw.toFixed(1) + '</strong><br/>' +
+                            '硬件分: <strong>' + p.hw.toFixed(1) + '</strong><br/>' +
+                            '综合评分: <strong>' + p.total.toFixed(1) + '</strong>';
                     }
                 },
                 legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10,
                     itemHeight: 8 },
-                grid: { left: '3%', right: '6%', top: '6%', bottom: '18%', containLabel: true },
+                grid: { left: '6%', right: '4%', top: '6%', bottom: '18%', containLabel: true },
                 xAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
                             type: 'dashed' } } },
-                yAxis: { type: 'category', data: names, axisLabel: { fontSize: 8, interval: 0 } },
-                series: [
-                    { name: '软件分', type: 'bar', stack: 'total', data: swData, barWidth: '50%',
-                        itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] },
-                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
-                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } },
-                    { name: '硬件分', type: 'bar', stack: 'total', data: hwData, barWidth: '50%',
-                        itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] },
-                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
-                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } }
-                ]
+                yAxis: { type: 'category', data: names, axisLabel: { fontSize: 10, interval: 0 } },
+                series: [{
+                    name: '软件分',
+                    type: 'bar',
+                    stack: 'total',
+                    data: swData,
+                    barWidth: '40%',
+                    itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] },
+                    label: {
+                        show: true,
+                        position: 'insideRight',
+                        formatter: function(p) {
+                            return p.value > 0 ? p.value.toFixed(1) : '';
+                        },
+                        fontSize: 8,
+                        color: 'white'
+                    }
+                }, {
+                    name: '硬件分',
+                    type: 'bar',
+                    stack: 'total',
+                    data: hwData,
+                    barWidth: '40%',
+                    itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] },
+                    label: {
+                        show: true,
+                        position: 'insideRight',
+                        formatter: function(p) {
+                            return p.value > 0 ? p.value.toFixed(1) : '';
+                        },
+                        fontSize: 8,
+                        color: 'white'
+                    }
+                }]
             });
+
             var resizeHandler = function() { chart.resize(); };
             window.removeEventListener('resize', resizeHandler);
             window.addEventListener('resize', resizeHandler);
@@ -2286,7 +2372,7 @@
                     axisPointer: { type: 'shadow' },
                     formatter: function(params) {
                         var p = params[0];
-                        return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value + ' 分';
+                        return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value.toFixed(1) + ' 分';
                     }
                 },
                 grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
@@ -2307,8 +2393,16 @@
                             return '#3b82f6';
                         }
                     },
-                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 700,
-                        color: '#334155' }
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: '#334155',
+                        formatter: function(params) {
+                            return params.value.toFixed(1);
+                        }
+                    }
                 }]
             });
             var resizeHandler = function() { chart.resize(); };
