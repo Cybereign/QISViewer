@@ -215,14 +215,14 @@
             </div>
         </div>
 
-        <!-- ===== 目标达成率图表 ===== -->
+        <!-- ===== 目标差值图表 ===== -->
         <div id="targetChartRow" class="chart-grid" style="margin-bottom:16px;">
             <div id="targetChartContainer" class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1基础车 目标达成率</div>
+                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1基础车 目标差值</div>
                 <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
             </div>
             <div id="targetChartContainer2" class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1长续航车 目标达成率</div>
+                <div class="chart-title"><i class="fas fa-bullseye"></i> DH1长续航车 目标差值</div>
                 <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
             </div>
             <div class="chart-card" style="visibility:hidden;"></div>
@@ -374,7 +374,7 @@ function safeSetHTML(id, html) {
 }
 
 // ============================================================
-// ★★★ 修改：配置加载，移除 configsLoaded 标志，改用 personMap 作为唯一判断 ★★★
+// ★★★ 配置加载 ★★★
 // ============================================================
 function loadAllConfigs() {
     // 1. 加载 projectConfig.json
@@ -438,12 +438,11 @@ function loadAllConfigs() {
         });
 }
 
-// ★★★ 新增：尝试启动应用（当 appConfig 和 personMap 都加载完成时）★★★
+// ★★★ tryStartApp ★★★
 function tryStartApp() {
     if (appConfig && Object.keys(personMap).length > 0) {
         console.log('✅ 所有配置加载完成');
         updateProjectBadges();
-        // 确保只调用一次
         if (!window._appStarted) {
             window._appStarted = true;
             autoLoadExcel();
@@ -534,12 +533,12 @@ function getProjectStage(projectId) {
 }
 
 // ============================================================
-// ★★★ 自动加载 Excel（防止重复执行）★★★
+// ★★★ 自动加载 Excel ★★★
 // ============================================================
 function autoLoadExcel() {
     if (excelLoading) return;
     excelLoading = true;
-    
+
     fetch('data.xls')
         .then(function(res) {
             if (res.ok) {
@@ -705,8 +704,7 @@ function processWorkbook(wb, fileName) {
     }
 
     currentData = records;
-    
-    // ★★★ 强制显示内容区域 ★★★
+
     document.getElementById('fileUploadArea').classList.add('hidden');
     document.getElementById('fileUploadArea').style.display = 'none';
     document.getElementById('contentArea').classList.remove('hidden');
@@ -803,9 +801,9 @@ function groupBySum(arr, key, sumKey) {
 function updateOwnerFilter(data) {
     var filterSelect = document.getElementById('ownerFilter');
     if (!filterSelect) return;
-    
+
     var currentValue = filterSelect.value;
-    
+
     var ownerMap = {};
     for (var i = 0; i < data.length; i++) {
         var d = data[i];
@@ -820,27 +818,27 @@ function updateOwnerFilter(data) {
             }
         }
     }
-    
+
     var ownerList = [];
     for (var k in ownerMap) {
         if (ownerMap.hasOwnProperty(k)) {
             ownerList.push(ownerMap[k]);
         }
     }
-    
+
     ownerList.sort(function(a, b) {
         if (a.isCenter && !b.isCenter) return -1;
         if (!a.isCenter && b.isCenter) return 1;
         return a.name.localeCompare(b.name);
     });
-    
+
     var html = '<option value="">全部人员</option>';
     for (var j = 0; j < ownerList.length; j++) {
         var o = ownerList[j];
         html += '<option value="' + o.name + '">' + o.name + '</option>';
     }
     filterSelect.innerHTML = html;
-    
+
     if (currentValue) {
         filterSelect.value = currentValue;
     }
@@ -853,10 +851,10 @@ function applyOwnerFilter() {
     var filterSelect = document.getElementById('ownerFilter');
     var centerSelect = document.getElementById('centerFilter');
     if (!filterSelect || !centerSelect) return;
-    
+
     var ownerValue = filterSelect.value;
     var centerValue = centerSelect.value;
-    
+
     renderTableWithFilter(currentData, ownerValue, centerValue);
 }
 
@@ -866,7 +864,7 @@ function applyOwnerFilter() {
 function renderTableWithFilter(data, ownerFilter, centerFilter) {
     var tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    
+
     var sortedData = data.slice().sort(function(a, b) {
         var aIsCenter = (a.matchedDept === '智能驾驶与座舱开发中心' || a.matchedDept === '智能电子电气开发中心');
         var bIsCenter = (b.matchedDept === '智能驾驶与座舱开发中心' || b.matchedDept === '智能电子电气开发中心');
@@ -874,16 +872,16 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         if (!aIsCenter && bIsCenter) return 1;
         return a.id - b.id;
     });
-    
+
     if (ownerFilter) {
         sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
     }
     if (centerFilter) {
         sortedData = sortedData.filter(function(d) { return d.matchedDept === centerFilter; });
     }
-    
+
     document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
-    
+
     var display = sortedData.slice(0, 200);
     var html = '';
     for (var i = 0; i < display.length; i++) {
@@ -894,19 +892,19 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         if (isOpen) { rowClass = 'filtered'; statusTag = '<span class="tag filter-matched">🟡未关闭</span>'; }
         else if (isClosed) { rowClass = 'closed'; statusTag = '<span class="tag closed-tag">✅已关闭</span>'; }
         else { statusTag = '<span class="tag">-</span>'; }
-        
+
         var isCenter = (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心');
         if (isCenter) rowClass += ' center-priority';
-        
+
         var projectClass = d.projectId === 'project1' ? 'project1' : d.projectId === 'project2' ? 'project2' : 'project-other';
         var showScore = isOpen;
         var color = d.matchedDept === '智能驾驶与座舱开发中心' ? '#1d4ed8' : d.matchedDept === '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8';
-        
+
         var ownerDisplay = d.owner;
         if (isCenter) {
             ownerDisplay = '⭐ ' + d.owner;
         }
-        
+
         html += '<tr class="' + rowClass + '">' +
             '<td>' + d.id + '</td>' +
             '<td><span class="status-badge ' + d.mainStatus + '">' + d.mainStatus + '</span></td>' +
@@ -964,8 +962,7 @@ function renderStatsTable(openData) {
         }
         centerMap[center][prof]++;
     }
-    
-    // 构建中心列表（固定顺序：两个主要中心在前，其他中心在后）
+
     var centerList = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
     var otherCenters = [];
     for (var c in centerMap) {
@@ -998,7 +995,6 @@ function renderStatsTable(openData) {
             var centerData = projectData.filter(function(d) { return d.matchedDept === center; });
             if (centerData.length === 0) continue;
 
-            // ★★★ 动态获取该中心下的所有专业 ★★★
             var profs = [];
             var profSet = {};
             for (var di = 0; di < centerData.length; di++) {
@@ -1060,28 +1056,28 @@ function renderStatsTable(openData) {
 }
 
 // ============================================================
-// ★★★ 目标达成率图表（修复版）★★★
+// ★★★ 目标差值图表（显示 实际值 - 目标值）★★★
 // ============================================================
 function renderTargetCharts(openData) {
     var modules = displayConfig.modules || {};
     if (modules.targetChart === false) return;
-    
+
     if (!appConfig || !appConfig.stageTarget) {
         console.warn('⚠️ stageTarget 配置不存在');
         return;
     }
-    
+
     var projects = appConfig.projectConfig.projects || [];
     var stages = appConfig.stageTarget.stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
-    
+
     for (var pi = 0; pi < projects.length; pi++) {
         var proj = projects[pi];
         var projectId = proj.id;
         var projectName = proj.name;
         var stageId = proj.stage || 'SG10';
         var stage = stages[stageId];
-        
+
         var domId = (pi === 0) ? 'chartTarget1' : 'chartTarget2';
         var dom = document.getElementById(domId);
         if (!dom) {
@@ -1091,17 +1087,17 @@ function renderTargetCharts(openData) {
         if (chartInstances[domId]) {
             chartInstances[domId].dispose();
         }
-        
+
         var chart = echarts.init(dom);
         chartInstances[domId] = chart;
-        
+
         var projectData = openData.filter(function(d) { return d.projectId === projectId; });
-        
+
         var categories = [];
         var actualValues = [];
         var targetValues = [];
-        var rateValues = [];
-        
+        var diffValues = [];
+
         if (!stage) {
             chart.setOption({
                 title: {
@@ -1114,7 +1110,7 @@ function renderTargetCharts(openData) {
             console.warn('⚠️ 阶段配置不存在:', stageId);
             continue;
         }
-        
+
         if (projectData.length === 0) {
             chart.setOption({
                 title: {
@@ -1126,16 +1122,16 @@ function renderTargetCharts(openData) {
             });
             continue;
         }
-        
+
         for (var ci = 0; ci < centerNames.length; ci++) {
             var cName = centerNames[ci];
             var cConfig = stage.centers[cName];
             if (!cConfig) continue;
-            
+
             var profs = cConfig.professions || {};
             var target = cConfig.target || 0;
             var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
-            
+
             var profActuals = {};
             for (var profName in profs) {
                 if (profs.hasOwnProperty(profName)) {
@@ -1147,7 +1143,7 @@ function renderTargetCharts(openData) {
                     profActuals[profName] = profActual;
                 }
             }
-            
+
             for (var profName2 in profs) {
                 if (profs.hasOwnProperty(profName2)) {
                     var ratio = profs[profName2] || 0;
@@ -1157,12 +1153,13 @@ function renderTargetCharts(openData) {
                     categories.push(displayName);
                     actualValues.push(Math.round(profActual2 * 10) / 10);
                     targetValues.push(Math.round(profTarget * 10) / 10);
-                    var rate = profTarget > 0 ? (profActual2 / profTarget * 100) : 0;
-                    rateValues.push(Math.round(rate));
+                    // ★★★ 计算差值 = 实际值 - 目标值 ★★★
+                    var diff = profActual2 - profTarget;
+                    diffValues.push(Math.round(diff * 10) / 10);
                 }
             }
         }
-        
+
         if (categories.length === 0) {
             chart.setOption({
                 title: {
@@ -1174,16 +1171,17 @@ function renderTargetCharts(openData) {
             });
             continue;
         }
-        
+
+        // ★★★ 柱状图颜色：差值 <= 0 绿色（达标），差值 > 0 红色（不达标）★★★
         var barColors = [];
-        for (var i = 0; i < actualValues.length; i++) {
-            if (actualValues[i] >= targetValues[i]) {
-                barColors.push('#ef4444');
+        for (var i = 0; i < diffValues.length; i++) {
+            if (diffValues[i] <= 0) {
+                barColors.push('#10b981');  // 绿色：达标
             } else {
-                barColors.push('#10b981');
+                barColors.push('#ef4444');  // 红色：不达标
             }
         }
-        
+
         chart.setOption({
             tooltip: {
                 trigger: 'axis',
@@ -1193,12 +1191,14 @@ function renderTargetCharts(openData) {
                     var name = categories[idx] || '';
                     var actual = actualValues[idx] || 0;
                     var target = targetValues[idx] || 0;
-                    var rate = target > 0 ? (actual / target * 100).toFixed(1) : 0;
-                    var status = actual >= target ? '✅ 已达标' : '⚠️ 待提升';
+                    var diff = diffValues[idx] || 0;
+                    var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
+                    var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
+                    var color = diff <= 0 ? '#10b981' : '#ef4444';
                     return '<strong>' + name + '</strong><br/>' +
                            '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
                            '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
-                           '达成率: <strong>' + rate + '%</strong><br/>' +
+                           '差值: <strong style="color:' + color + ';">' + diffDisplay + '</strong><br/>' +
                            '状态: ' + status;
                 }
             },
@@ -1254,8 +1254,9 @@ function renderTargetCharts(openData) {
                         color: '#334155',
                         formatter: function(params) {
                             var idx = params.dataIndex;
-                            var rate = rateValues[idx] || 0;
-                            return rate + '%';
+                            var diff = diffValues[idx] || 0;
+                            var label = diff <= 0 ? '✅' : '❌';
+                            return label + ' ' + params.value.toFixed(1);
                         }
                     }
                 },
@@ -1282,7 +1283,7 @@ function renderTargetCharts(openData) {
                 }
             ]
         });
-        
+
         var resizeHandler = function() { chart.resize(); };
         window.removeEventListener('resize', resizeHandler);
         window.addEventListener('resize', resizeHandler);
@@ -1376,11 +1377,11 @@ function renderAll(data) {
 
     var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
     updateOwnerFilter(allData);
-    
+
     var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
     var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
     renderTableWithFilter(data, ownerFilter, centerFilter);
-    
+
     renderCharts(openData);
 }
 
