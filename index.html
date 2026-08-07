@@ -1665,7 +1665,7 @@
         }
 
         // ============================================================
-        // ★★★ 目标差值图表（修复 Tooltip 和尺寸问题）★★★
+        // ★★★ 目标差值图表（修复 Tooltip 显示问题 - 使用 IIFE 固话数据）★★★
         // ============================================================
         function renderTargetCharts(openData) {
             var modules = displayConfig.modules || {};
@@ -1700,21 +1700,14 @@
                     continue;
                 }
 
-                // ★★★ 动态更新图表标题 ★★★
+                // 动态更新图表标题
                 var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
                 if (titleEl) {
                     titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
                 }
 
-                // ★★★ 确保容器尺寸正确 ★★★
                 dom.style.width = '100%';
                 dom.style.height = '260px';
-
-                // ★★★ 先 resize 父容器确保布局完成 ★★★
-                var parentCard = dom.closest('.chart-card');
-                if (parentCard) {
-                    parentCard.style.display = 'block';
-                }
 
                 if (chartInstances[domId]) {
                     chartInstances[domId].dispose();
@@ -1726,7 +1719,6 @@
 
                 var projectData = openData.filter(function(d) { return d.projectId === projectId; });
 
-                // ★★★ 每个图表独立的数据变量 ★★★
                 var categories = [];
                 var actualValues = [];
                 var targetValues = [];
@@ -1813,157 +1805,146 @@
                     continue;
                 }
 
-                // ★★★ 关键修复：为当前图表创建独立的数据副本 ★★★
-                // 每个图表拥有自己的数据副本，不会被后续循环覆盖
-                var chartData = {
-                    categories: categories.slice(),
-                    actualValues: actualValues.slice(),
-                    targetValues: targetValues.slice(),
-                    greenParts: greenParts.slice(),
-                    redParts: redParts.slice()
-                };
-
-                chart.setOption({
-                    tooltip: {
-                        trigger: 'axis',
-                        axisPointer: { type: 'shadow' },
-                        formatter: function(params) {
-                            // ★★★ 使用当前图表独立的数据副本 ★★★
-                            var cats = chartData.categories;
-                            var actuals = chartData.actualValues;
-                            var targets = chartData.targetValues;
-
-                            var idx = 0;
-                            for (var p = 0; p < params.length; p++) {
-                                if (params[p].dataIndex !== undefined) {
-                                    idx = params[p].dataIndex;
-                                    break;
+                // ★★★ 关键修复：使用 IIFE 为每个图表创建独立的作用域 ★★★
+                // 将当前图表的数据固话到闭包中，避免被后续循环覆盖
+                (function(chartInstance, cats, actuals, targets, greens, reds) {
+                    chartInstance.setOption({
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: { type: 'shadow' },
+                            formatter: function(params) {
+                                // ★★★ 使用闭包中固化的数据 ★★★
+                                var idx = 0;
+                                for (var p = 0; p < params.length; p++) {
+                                    if (params[p].dataIndex !== undefined) {
+                                        idx = params[p].dataIndex;
+                                        break;
+                                    }
+                                }
+                                var name = cats[idx] || '';
+                                var actual = actuals[idx] || 0;
+                                var target = targets[idx] || 0;
+                                var diff = actual - target;
+                                var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
+                                var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
+                                var color = diff <= 0 ? '#10b981' : '#ef4444';
+                                return '<strong>' + name + '</strong><br/>' +
+                                    '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
+                                    '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
+                                    '差值: <strong style="color:' + color + ';">' + diffDisplay +
+                                    '</strong><br/>' +
+                                    '状态: ' + status;
+                            }
+                        },
+                        legend: {
+                            data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
+                            bottom: 0,
+                            icon: 'roundRect',
+                            itemWidth: 12,
+                            itemHeight: 8,
+                            fontSize: 10
+                        },
+                        grid: {
+                            left: '6%',
+                            right: '8%',
+                            top: '8%',
+                            bottom: '22%',
+                            containLabel: true
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: cats,
+                            axisLabel: {
+                                rotate: 30,
+                                fontSize: 8,
+                                interval: 0,
+                                width: 70,
+                                overflow: 'break'
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '分值',
+                            splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                            min: 0
+                        },
+                        series: [{
+                            name: '✅ 达标部分 (≤目标)',
+                            type: 'bar',
+                            stack: 'total',
+                            data: greens,
+                            barWidth: '40%',
+                            itemStyle: {
+                                borderRadius: [3, 3, 0, 0],
+                                color: '#10b981'
+                            },
+                            label: {
+                                show: true,
+                                position: 'inside',
+                                fontSize: 8,
+                                fontWeight: 600,
+                                color: 'white',
+                                formatter: function(params) {
+                                    return params.value > 0 ? params.value.toFixed(1) : '';
                                 }
                             }
-                            var name = cats[idx] || '';
-                            var actual = actuals[idx] || 0;
-                            var target = targets[idx] || 0;
-                            var diff = actual - target;
-                            var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
-                            var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
-                            var color = diff <= 0 ? '#10b981' : '#ef4444';
-                            return '<strong>' + name + '</strong><br/>' +
-                                '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
-                                '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
-                                '差值: <strong style="color:' + color + ';">' + diffDisplay +
-                                '</strong><br/>' +
-                                '状态: ' + status;
-                        }
-                    },
-                    legend: {
-                        data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
-                        bottom: 0,
-                        icon: 'roundRect',
-                        itemWidth: 12,
-                        itemHeight: 8,
-                        fontSize: 10
-                    },
-                    grid: {
-                        left: '6%',
-                        right: '8%',
-                        top: '8%',
-                        bottom: '22%',
-                        containLabel: true
-                    },
-                    xAxis: {
-                        type: 'category',
-                        data: categories,
-                        axisLabel: {
-                            rotate: 30,
-                            fontSize: 8,
-                            interval: 0,
-                            width: 70,
-                            overflow: 'break'
-                        }
-                    },
-                    yAxis: {
-                        type: 'value',
-                        name: '分值',
-                        splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                        min: 0
-                    },
-                    series: [{
-                        name: '✅ 达标部分 (≤目标)',
-                        type: 'bar',
-                        stack: 'total',
-                        data: greenParts,
-                        barWidth: '40%',
-                        itemStyle: {
-                            borderRadius: [3, 3, 0, 0],
-                            color: '#10b981'
-                        },
-                        label: {
-                            show: true,
-                            position: 'inside',
-                            fontSize: 8,
-                            fontWeight: 600,
-                            color: 'white',
-                            formatter: function(params) {
-                                return params.value > 0 ? params.value.toFixed(1) : '';
+                        }, {
+                            name: '❌ 超标部分 (>目标)',
+                            type: 'bar',
+                            stack: 'total',
+                            data: reds,
+                            barWidth: '40%',
+                            itemStyle: {
+                                borderRadius: [3, 3, 0, 0],
+                                color: '#ef4444'
+                            },
+                            label: {
+                                show: true,
+                                position: 'inside',
+                                fontSize: 8,
+                                fontWeight: 600,
+                                color: 'white',
+                                formatter: function(params) {
+                                    return params.value > 0 ? '+' + params.value.toFixed(1) : '';
+                                }
                             }
-                        }
-                    }, {
-                        name: '❌ 超标部分 (>目标)',
-                        type: 'bar',
-                        stack: 'total',
-                        data: redParts,
-                        barWidth: '40%',
-                        itemStyle: {
-                            borderRadius: [3, 3, 0, 0],
-                            color: '#ef4444'
-                        },
-                        label: {
-                            show: true,
-                            position: 'inside',
-                            fontSize: 8,
-                            fontWeight: 600,
-                            color: 'white',
-                            formatter: function(params) {
-                                return params.value > 0 ? '+' + params.value.toFixed(1) : '';
+                        }, {
+                            name: '目标值',
+                            type: 'bar',
+                            data: targets,
+                            barWidth: '40%',
+                            itemStyle: {
+                                borderRadius: [3, 3, 0, 0],
+                                color: '#94a3b8',
+                                opacity: 0.3
+                            },
+                            label: {
+                                show: true,
+                                position: 'top',
+                                fontSize: 7,
+                                fontWeight: 600,
+                                color: '#64748b',
+                                formatter: function(params) {
+                                    return '🎯 ' + params.value.toFixed(1);
+                                }
                             }
-                        }
-                    }, {
-                        name: '目标值',
-                        type: 'bar',
-                        data: targetValues,
-                        barWidth: '40%',
-                        itemStyle: {
-                            borderRadius: [3, 3, 0, 0],
-                            color: '#94a3b8',
-                            opacity: 0.3
-                        },
-                        label: {
-                            show: true,
-                            position: 'top',
-                            fontSize: 7,
-                            fontWeight: 600,
-                            color: '#64748b',
-                            formatter: function(params) {
-                                return '🎯 ' + params.value.toFixed(1);
-                            }
-                        }
-                    }]
-                });
+                        }]
+                    });
+                })(chart, categories.slice(), actualValues.slice(), targetValues.slice(), greenParts
+                    .slice(), redParts.slice());
 
-                // ★★★ 关键修复：延迟执行 resize 确保图表尺寸正确 ★★★
+                // 延迟执行 resize 确保图表尺寸正确
                 setTimeout(function() {
                     if (chart && !chart.isDisposed()) {
                         chart.resize();
                     }
                 }, 200);
 
-                // 窗口 resize 事件
                 var resizeHandler = function() {
                     if (chart && !chart.isDisposed()) {
                         chart.resize();
                     }
                 };
-                // 移除旧的监听避免重复
                 if (chart._resizeHandler) {
                     window.removeEventListener('resize', chart._resizeHandler);
                 }
