@@ -4,1740 +4,2452 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>缺陷数据智能分析看板</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    </script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif; background: #f0f4f9; padding: 16px 20px; color: #1e293b; }
-        .dashboard { max-width: 1900px; margin: 0 auto; }
-        .module-hidden { display: none !important; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+            background: #f0f4f9;
+            padding: 16px 20px;
+            color: #1e293b;
+        }
+        .dashboard {
+            max-width: 1900px;
+            margin: 0 auto;
+        }
+        .module-hidden {
+            display: none !important;
+        }
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; background: white; padding: 14px 22px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        .header h1 { font-weight: 700; font-size: 24px; color: #0f172a; }
-        .header h1 i { color: #3b82f6; margin-right: 10px; }
-        .header .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        .header .btn { background: #3b82f6; color: white; border: none; padding: 7px 18px; border-radius: 40px; font-size: 13px; cursor: pointer; transition: 0.2s; font-weight: 500; }
-        .header .btn:hover { background: #2563eb; }
-        .header .btn i { margin-right: 6px; }
-        .header .btn-outline { background: white; color: #3b82f6; border: 1.5px solid #3b82f6; }
-        .header .btn-outline:hover { background: #eff6ff; }
-        .header .info-badge { font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 14px; border-radius: 30px; white-space: nowrap; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+            background: white;
+            padding: 14px 22px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .header h1 {
+            font-weight: 700;
+            font-size: 24px;
+            color: #0f172a;
+        }
+        .header h1 i {
+            color: #3b82f6;
+            margin-right: 10px;
+        }
+        .header .tools {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .header .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 7px 18px;
+            border-radius: 40px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        .header .btn:hover {
+            background: #2563eb;
+        }
+        .header .btn i {
+            margin-right: 6px;
+        }
+        .header .btn-outline {
+            background: white;
+            color: #3b82f6;
+            border: 1.5px solid #3b82f6;
+        }
+        .header .btn-outline:hover {
+            background: #eff6ff;
+        }
+        .header .info-badge {
+            font-size: 12px;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 14px;
+            border-radius: 30px;
+            white-space: nowrap;
+        }
 
-        .status-bar { display: flex; gap: 16px; flex-wrap: wrap; background: white; padding: 10px 18px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e9eef3; align-items: center; font-size: 13px; }
-        .status-bar .item { display: flex; align-items: center; gap: 6px; }
-        .status-bar .item .label { color: #94a3b8; }
-        .status-bar .item .value { font-weight: 600; color: #0f172a; }
-        .status-bar .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-        .status-bar .dot.green { background: #10b981; }
-        .status-bar .dot.blue { background: #3b82f6; }
-        .status-bar .dot.orange { background: #f97316; }
-        .status-bar .dot.yellow { background: #f59e0b; }
-        .status-bar .dot.red { background: #ef4444; }
-        .status-bar .dot.purple { background: #8b5cf6; }
+        .status-bar {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 10px 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #e9eef3;
+            align-items: center;
+            font-size: 13px;
+        }
+        .status-bar .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-bar .item .label {
+            color: #94a3b8;
+        }
+        .status-bar .item .value {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .status-bar .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-bar .dot.green {
+            background: #10b981;
+        }
+        .status-bar .dot.blue {
+            background: #3b82f6;
+        }
+        .status-bar .dot.orange {
+            background: #f97316;
+        }
+        .status-bar .dot.yellow {
+            background: #f59e0b;
+        }
+        .status-bar .dot.red {
+            background: #ef4444;
+        }
+        .status-bar .dot.purple {
+            background: #8b5cf6;
+        }
 
-        .filter-bar { background: white; padding: 10px 18px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e9eef3; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; }
-        .filter-bar .label { color: #94a3b8; font-weight: 500; }
-        .filter-bar .value { font-weight: 600; color: #0f172a; }
-        .filter-bar .badge { background: #dbeafe; color: #1d4ed8; padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-        .filter-bar .badge.green { background: #dcfce7; color: #166534; }
-        .filter-bar .badge.purple { background: #ede9fe; color: #7c3aed; }
-        .filter-bar .badge.orange { background: #fef3c7; color: #d97706; }
+        .filter-bar {
+            background: white;
+            padding: 10px 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #e9eef3;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+        .filter-bar .label {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .filter-bar .value {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .filter-bar .badge {
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .filter-bar .badge.green {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .filter-bar .badge.purple {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+        .filter-bar .badge.orange {
+            background: #fef3c7;
+            color: #d97706;
+        }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
-        .kpi-card { background: white; padding: 14px 16px; border-radius: 14px; border: 1px solid #edf2f7; transition: 0.2s; }
-        .kpi-card:hover { border-color: #cbd5e1; }
-        .kpi-card .label { font-size: 10px; font-weight: 500; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
-        .kpi-card .value { font-size: 28px; font-weight: 700; color: #0f172a; margin: 2px 0; }
-        .kpi-card .sub { font-size: 10px; color: #94a3b8; line-height: 1.6; }
-        .kpi-card .sub .tag-soft { color: #3b82f6; font-weight: 600; }
-        .kpi-card .sub .tag-hard { color: #10b981; font-weight: 600; }
-        .kpi-card .sub .tag-total { color: #8b5cf6; font-weight: 600; }
-        .kpi-card .dept-tag { background: #dbeafe; color: #1d4ed8; padding: 1px 8px; border-radius: 20px; font-size: 9px; font-weight: 600; }
-        .kpi-card .dept-tag.purple { background: #ede9fe; color: #7c3aed; }
-        .kpi-card .dept-tag.orange { background: #fef3c7; color: #d97706; }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .kpi-card {
+            background: white;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid #edf2f7;
+            transition: 0.2s;
+        }
+        .kpi-card:hover {
+            border-color: #cbd5e1;
+        }
+        .kpi-card .label {
+            font-size: 10px;
+            font-weight: 500;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .kpi-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 2px 0;
+        }
+        .kpi-card .sub {
+            font-size: 10px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        .kpi-card .sub .tag-soft {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .kpi-card .sub .tag-hard {
+            color: #10b981;
+            font-weight: 600;
+        }
+        .kpi-card .sub .tag-total {
+            color: #8b5cf6;
+            font-weight: 600;
+        }
+        .kpi-card .dept-tag {
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 1px 8px;
+            border-radius: 20px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+        .kpi-card .dept-tag.purple {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+        .kpi-card .dept-tag.orange {
+            background: #fef3c7;
+            color: #d97706;
+        }
 
-        .chart-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
-        .chart-card { background: white; border-radius: 14px; padding: 12px 14px 4px 14px; border: 1px solid #edf2f7; }
-        .chart-card .chart-title { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
-        .chart-card .chart-title i { color: #3b82f6; font-size: 14px; }
-        .chart-container { width: 100%; height: 200px; }
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 14px;
+            padding: 12px 14px 4px 14px;
+            border: 1px solid #edf2f7;
+        }
+        .chart-card .chart-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .chart-card .chart-title i {
+            color: #3b82f6;
+            font-size: 14px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 200px;
+        }
 
-        .stats-wrapper { background: white; border-radius: 14px; padding: 10px 14px 14px; border: 1px solid #edf2f7; margin-bottom: 16px; }
-        .stats-table-wrap { overflow-x: auto; border-radius: 10px; max-height: 500px; overflow-y: auto; }
-        #statsTable { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1100px; }
-        #statsTable th { background: #f1f5f9; color: #475569; font-weight: 600; padding: 5px 6px; text-align: center; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
-        #statsTable td { text-align: center; padding: 4px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 11px; }
-        #statsTable td:first-child { text-align: left; }
-        #statsTable td:nth-child(2) { text-align: left; }
-        #statsTable td:nth-child(3) { text-align: left; }
-        #statsTable tr:hover td { background: #f8fafc; }
-        .stats-group-header td { background: #e8ecf1 !important; font-weight: 700; font-size: 13px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding: 6px 8px; text-align: left; }
-        .stats-group-header:hover td { background: #e8ecf1 !important; }
-        .stats-other-center td { background: #fafafa !important; color: #94a3b8; }
-        .stats-other-center:hover td { background: #f5f5f5 !important; }
-        .stats-other-center td:first-child { color: #94a3b8; }
-        .stats-other-center td:nth-child(2) { color: #94a3b8; }
+        .stats-wrapper {
+            background: white;
+            border-radius: 14px;
+            padding: 10px 14px 14px;
+            border: 1px solid #edf2f7;
+            margin-bottom: 16px;
+        }
+        .stats-table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        #statsTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            min-width: 1100px;
+        }
+        #statsTable th {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+            padding: 5px 6px;
+            text-align: center;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 9.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        #statsTable td {
+            text-align: center;
+            padding: 4px 5px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            font-size: 11px;
+        }
+        #statsTable td:first-child {
+            text-align: left;
+        }
+        #statsTable td:nth-child(2) {
+            text-align: left;
+        }
+        #statsTable td:nth-child(3) {
+            text-align: left;
+        }
+        #statsTable tr:hover td {
+            background: #f8fafc;
+        }
+        .stats-group-header td {
+            background: #e8ecf1 !important;
+            font-weight: 700;
+            font-size: 13px;
+            color: #0f172a;
+            border-bottom: 2px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        .stats-group-header:hover td {
+            background: #e8ecf1 !important;
+        }
+        .stats-other-center td {
+            background: #fafafa !important;
+            color: #94a3b8;
+        }
+        .stats-other-center:hover td {
+            background: #f5f5f5 !important;
+        }
+        .stats-other-center td:first-child {
+            color: #94a3b8;
+        }
+        .stats-other-center td:nth-child(2) {
+            color: #94a3b8;
+        }
 
-        .table-wrapper { background: white; border-radius: 14px; padding: 10px 14px 14px; border: 1px solid #edf2f7; }
-        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
-        .table-header h3 { font-size: 14px; font-weight: 600; }
-        .table-header h3 i { color: #3b82f6; margin-right: 6px; }
-        .table-header .filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .table-header .filter-group label { font-size: 12px; color: #94a3b8; white-space: nowrap; }
-        .table-header .filter-group select { padding: 4px 10px; border-radius: 6px; border: 1px solid #d1d9e6; font-size: 12px; background: white; max-width: 200px; cursor: pointer; }
-        .table-header .filter-group select:focus { outline: none; border-color: #3b82f6; }
-        .table-scroll { overflow-x: auto; border-radius: 10px; max-height: 460px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1500px; }
-        th { background: #f8fafc; color: #475569; font-weight: 600; padding: 6px 5px; text-align: left; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
-        td { padding: 5px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 11px; }
-        tr:hover td { background: #fafdff; }
-        tr.filtered { background: #f0fdf4; }
-        tr.filtered:hover td { background: #dcfce7; }
-        tr.closed { background: #fef3c7; }
-        tr.closed:hover td { background: #fde68a; }
-        tr.center-priority { background: #f0f7ff; }
-        tr.center-priority:hover td { background: #e0edff; }
-        .status-badge { display: inline-block; padding: 1px 8px; border-radius: 30px; font-size: 9px; font-weight: 500; background: #e9edf2; color: #334155; white-space: nowrap; }
-        .status-badge.待立项 { background: #fff3cd; color: #856404; }
-        .status-badge.解析中 { background: #cce5ff; color: #004085; }
-        .status-badge.待制定改进计划 { background: #f8d7da; color: #721c24; }
-        .status-badge.待部门联络人审核 { background: #d1ecf1; color: #0c5460; }
-        .status-badge.质量主管退回 { background: #f5c6cb; color: #721c24; }
-        .status-badge.已关闭 { background: #d4edda; color: #155724; }
-        .importance { font-weight: 700; font-size: 12px; }
-        .importance.S1 { color: #dc2626; }
-        .importance.S2 { color: #f59e0b; }
-        .importance.S3 { color: #d97706; }
-        .importance.S4 { color: #2563eb; }
-        .importance.A { color: #dc2626; }
-        .importance.B { color: #7c3aed; }
-        .importance.C { color: #059669; }
-        .tag { background: #eef2ff; padding: 1px 6px; border-radius: 30px; font-size: 9px; color: #4f46e5; white-space: nowrap; }
-        .tag.intelligent { background: #dbeafe; color: #1d4ed8; }
-        .tag.non-intelligent { background: #f1f5f9; color: #94a3b8; }
-        .tag.filter-matched { background: #dcfce7; color: #166534; }
-        .tag.closed-tag { background: #fef3c7; color: #d97706; }
-        .tag.project1 { background: #dbeafe; color: #1d4ed8; }
-        .tag.project2 { background: #ede9fe; color: #7c3aed; }
-        .tag.project-other { background: #f1f5f9; color: #94a3b8; }
-        .tag.other-center { background: #f1f5f9; color: #94a3b8; }
-        .score { font-weight: 700; font-size: 11px; }
-        .score.high { color: #dc2626; }
-        .score.medium { color: #f59e0b; }
-        .score.low { color: #3b82f6; }
-        .score.closed-score { color: #94a3b8; }
-        .footer-note { margin-top: 16px; text-align: right; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+        .table-wrapper {
+            background: white;
+            border-radius: 14px;
+            padding: 10px 14px 14px;
+            border: 1px solid #edf2f7;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .table-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .table-header h3 i {
+            color: #3b82f6;
+            margin-right: 6px;
+        }
+        .table-header .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .table-header .filter-group label {
+            font-size: 12px;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        .table-header .filter-group select {
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #d1d9e6;
+            font-size: 12px;
+            background: white;
+            max-width: 200px;
+            cursor: pointer;
+        }
+        .table-header .filter-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .table-scroll {
+            overflow-x: auto;
+            border-radius: 10px;
+            max-height: 460px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            min-width: 1500px;
+        }
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            padding: 6px 5px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 9.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        td {
+            padding: 5px 5px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            font-size: 11px;
+        }
+        tr:hover td {
+            background: #fafdff;
+        }
+        tr.filtered {
+            background: #f0fdf4;
+        }
+        tr.filtered:hover td {
+            background: #dcfce7;
+        }
+        tr.closed {
+            background: #fef3c7;
+        }
+        tr.closed:hover td {
+            background: #fde68a;
+        }
+        tr.center-priority {
+            background: #f0f7ff;
+        }
+        tr.center-priority:hover td {
+            background: #e0edff;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 30px;
+            font-size: 9px;
+            font-weight: 500;
+            background: #e9edf2;
+            color: #334155;
+            white-space: nowrap;
+        }
+        .status-badge.待立项 {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-badge.解析中 {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .status-badge.待制定改进计划 {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-badge.待部门联络人审核 {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-badge.质量主管退回 {
+            background: #f5c6cb;
+            color: #721c24;
+        }
+        .status-badge.已关闭 {
+            background: #d4edda;
+            color: #155724;
+        }
+        .importance {
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .importance.S1 {
+            color: #dc2626;
+        }
+        .importance.S2 {
+            color: #f59e0b;
+        }
+        .importance.S3 {
+            color: #d97706;
+        }
+        .importance.S4 {
+            color: #2563eb;
+        }
+        .importance.A {
+            color: #dc2626;
+        }
+        .importance.B {
+            color: #7c3aed;
+        }
+        .importance.C {
+            color: #059669;
+        }
+        .tag {
+            background: #eef2ff;
+            padding: 1px 6px;
+            border-radius: 30px;
+            font-size: 9px;
+            color: #4f46e5;
+            white-space: nowrap;
+        }
+        .tag.intelligent {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .tag.non-intelligent {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+        .tag.filter-matched {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .tag.closed-tag {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .tag.project1 {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .tag.project2 {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+        .tag.project-other {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+        .tag.other-center {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+        .score {
+            font-weight: 700;
+            font-size: 11px;
+        }
+        .score.high {
+            color: #dc2626;
+        }
+        .score.medium {
+            color: #f59e0b;
+        }
+        .score.low {
+            color: #3b82f6;
+        }
+        .score.closed-score {
+            color: #94a3b8;
+        }
+        .footer-note {
+            margin-top: 16px;
+            text-align: right;
+            font-size: 12px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 14px;
+        }
 
-        .file-upload-area { border: 2px dashed #d1d9e6; border-radius: 14px; padding: 28px 20px; text-align: center; background: #fafcff; margin-bottom: 16px; }
-        .file-upload-area input[type="file"] { display: none; }
-        .file-upload-area label { background: #3b82f6; color: white; padding: 10px 28px; border-radius: 40px; cursor: pointer; font-weight: 500; display: inline-block; transition: 0.2s; }
-        .file-upload-area label:hover { background: #2563eb; }
-        .file-upload-area p { margin-top: 8px; color: #94a3b8; font-size: 13px; }
-        .file-upload-area .file-types { margin-top: 4px; font-size: 12px; color: #94a3b8; }
-        .loading { text-align: center; padding: 30px 0; color: #94a3b8; }
-        .loading i { font-size: 26px; display: block; margin-bottom: 8px; }
-        .error-msg { text-align: center; padding: 30px 20px; color: #dc2626; }
-        .error-msg i { font-size: 32px; display: block; margin-bottom: 10px; }
-        .hidden { display: none !important; }
-        .file-upload-area.hidden { display: none !important; }
+        .file-upload-area {
+            border: 2px dashed #d1d9e6;
+            border-radius: 14px;
+            padding: 28px 20px;
+            text-align: center;
+            background: #fafcff;
+            margin-bottom: 16px;
+        }
+        .file-upload-area input[type="file"] {
+            display: none;
+        }
+        .file-upload-area label {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 28px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            display: inline-block;
+            transition: 0.2s;
+        }
+        .file-upload-area label:hover {
+            background: #2563eb;
+        }
+        .file-upload-area p {
+            margin-top: 8px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        .file-upload-area .file-types {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .loading {
+            text-align: center;
+            padding: 30px 0;
+            color: #94a3b8;
+        }
+        .loading i {
+            font-size: 26px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .error-msg {
+            text-align: center;
+            padding: 30px 20px;
+            color: #dc2626;
+        }
+        .error-msg i {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .file-upload-area.hidden {
+            display: none !important;
+        }
 
-        .filter-group select { min-width: 120px; }
-        .filter-group select:disabled { opacity: 0.5; cursor: not-allowed; }
+        .filter-group select {
+            min-width: 120px;
+        }
+        .filter-group select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 1200px) {
+            .chart-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 800px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header .tools {
+                justify-content: center;
+            }
+        }
+        @media (max-width: 500px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="dashboard">
-    <!-- ===== 头部 ===== -->
-    <div id="header" class="header">
-        <h1><i class="fas fa-brain"></i>缺陷智能分析看板</h1>
-        <div class="tools">
-            <span class="info-badge" id="fileInfo"><i class="fas fa-file-excel"></i> 加载中...</span>
-            <button class="btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-upload"></i> 选择 Excel</button>
-            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)" style="display:none;">
-        </div>
-    </div>
-
-    <!-- ===== 状态栏 ===== -->
-    <div id="statusBar" class="status-bar">
-        <div class="item"><span class="dot green"></span><span class="label">数据:</span><span class="value" id="dataStatus">加载中...</span></div>
-        <div class="item"><span class="dot blue"></span><span class="label">总数:</span><span class="value" id="totalCount">-</span></div>
-        <div class="item"><span class="dot orange"></span><span class="label">未关闭:</span><span class="value" id="openCount">-</span></div>
-        <div class="item"><span class="dot green"></span><span class="label">已关闭:</span><span class="value" id="closedCount">-</span></div>
-        <div class="item"><span class="dot yellow"></span><span class="label">软件权重:</span><span class="value" id="swWeightStatus">加载中...</span></div>
-        <div class="item"><span class="dot red"></span><span class="label">硬件权重:</span><span class="value" id="hwWeightStatus">加载中...</span></div>
-        <div class="item"><span class="dot purple"></span><span class="label">项目数:</span><span class="value" id="projectStatus">加载中...</span></div>
-    </div>
-
-    <!-- ===== 过滤栏 ===== -->
-    <div id="filterBar" class="filter-bar">
-        <span class="label"><i class="fas fa-filter"></i> 改善状态:</span>
-        <span class="badge orange" id="openBadge">🟡 未关闭: 1/5,2/5,3/5,4/5</span>
-        <span class="badge green" id="closedBadge">✅ 已关闭: 5/5</span>
-        <span class="label">| 📁 项目:</span>
-        <span class="badge" id="project1Badge">加载中...</span>
-        <span class="badge purple" id="project2Badge">加载中...</span>
-        <span class="badge" id="projectOtherBadge">加载中...</span>
-        <span class="label">| 👤 人员:</span>
-        <span class="badge" id="personCountBadge">加载中...</span>
-    </div>
-
-    <!-- ===== 上传区域 ===== -->
-    <div id="fileUploadArea" class="file-upload-area hidden">
-        <i class="fas fa-file-excel" style="font-size:38px;color:#3b82f6;display:block;margin-bottom:10px;"></i>
-        <p style="font-size:16px;color:#64748b;margin-bottom:8px;">📄 未找到 data.xlsx 或 data.xls</p>
-        <label for="fileInput"><i class="fas fa-upload"></i> 手动选择 Excel 文件</label>
-        <p style="font-size:13px;color:#94a3b8;margin-top:8px;">支持 .xlsx 或 .xls 格式</p>
-        <div style="font-size:12px;color:#94a3b8;margin-top:4px;" id="fileNameDisplay"></div>
-    </div>
-
-    <!-- ===== 加载/错误 ===== -->
-    <div id="loadingIndicator" class="loading hidden"><i class="fas fa-spinner fa-pulse"></i> 正在解析数据...</div>
-    <div id="errorMsg" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i><p id="errorText"></p></div>
-
-    <!-- ===== 内容区域 ===== -->
-    <div id="contentArea" class="hidden">
-        <!-- ===== KPI ===== -->
-        <div id="kpiGrid" class="kpi-grid"></div>
-
-        <!-- ===== 整体统计表格 ===== -->
-        <div id="statsWrapper" class="stats-wrapper">
-            <div class="table-header">
-                <h3><i class="fas fa-chart-pie"></i> 项目 × 中心 × 专业 整体统计</h3>
-                <span class="stats-count" id="statsCount"><i class="fas fa-database"></i> 共 0 条</span>
-            </div>
-            <div class="stats-table-wrap">
-                <table id="statsTable">
-                    <thead><tr><th>项目</th><th>中心</th><th>专业</th><th>问题数</th><th>软件分</th><th>硬件分</th><th>总分</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>A</th><th>B</th><th>C</th></tr></thead>
-                    <tbody id="statsBody"></tbody>
-                </table>
+    <div class="dashboard">
+        <!-- ===== 头部 ===== -->
+        <div id="header" class="header">
+            <h1><i class="fas fa-brain"></i>缺陷智能分析看板</h1>
+            <div class="tools">
+                <span class="info-badge" id="fileInfo"><i class="fas fa-file-excel"></i> 加载中...</span>
+                <button class="btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-upload"></i> 选择 Excel</button>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)" style="display:none;">
             </div>
         </div>
 
-        <!-- ===== 目标差值图表 ===== -->
-        <div id="targetChartRow" class="chart-grid" style="margin-bottom:16px;">
-            <div id="targetChartContainer" class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> 项目1 目标差值</div>
-                <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
-            </div>
-            <div id="targetChartContainer2" class="chart-card">
-                <div class="chart-title"><i class="fas fa-bullseye"></i> 项目2 目标差值</div>
-                <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
-            </div>
-            <div class="chart-card" style="visibility:hidden;"></div>
+        <!-- ===== 状态栏 ===== -->
+        <div id="statusBar" class="status-bar">
+            <div class="item"><span class="dot green"></span><span class="label">数据:</span><span class="value" id="dataStatus">加载中...</span></div>
+            <div class="item"><span class="dot blue"></span><span class="label">总数:</span><span class="value" id="totalCount">-</span></div>
+            <div class="item"><span class="dot orange"></span><span class="label">未关闭:</span><span class="value" id="openCount">-</span></div>
+            <div class="item"><span class="dot green"></span><span class="label">已关闭:</span><span class="value" id="closedCount">-</span></div>
+            <div class="item"><span class="dot yellow"></span><span class="label">软件权重:</span><span class="value" id="swWeightStatus">加载中...</span></div>
+            <div class="item"><span class="dot red"></span><span class="label">硬件权重:</span><span class="value" id="hwWeightStatus">加载中...</span></div>
+            <div class="item"><span class="dot purple"></span><span class="label">项目数:</span><span class="value" id="projectStatus">加载中...</span></div>
         </div>
 
-        <!-- ===== 其他图表 ===== -->
-        <div id="chartGrid" class="chart-grid">
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div>
-                <div id="chartStatusSW" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (硬件分)</div>
-                <div id="chartStatusHW" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (软件分)</div>
-                <div id="chartImportanceSW" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (硬件分)</div>
-                <div id="chartImportanceHW" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-building"></i> 匹配中心分布</div>
-                <div id="chartDept" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-chart-bar"></i> 各项目·中心软件/硬件分值</div>
-                <div id="chartProjectCompare" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div>
-                <div id="chartGantt" class="chart-container" style="height:280px;"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div>
-                <div id="chartScore" class="chart-container"></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div>
-                <div id="chartSource" class="chart-container"></div>
-            </div>
+        <!-- ===== 过滤栏 ===== -->
+        <div id="filterBar" class="filter-bar">
+            <span class="label"><i class="fas fa-filter"></i> 改善状态:</span>
+            <span class="badge orange" id="openBadge">🟡 未关闭: 1/5,2/5,3/5,4/5</span>
+            <span class="badge green" id="closedBadge">✅ 已关闭: 5/5</span>
+            <span class="label">| 📁 项目:</span>
+            <span class="badge" id="project1Badge">加载中...</span>
+            <span class="badge purple" id="project2Badge">加载中...</span>
+            <span class="badge" id="projectOtherBadge">加载中...</span>
+            <span class="label">| 👤 人员:</span>
+            <span class="badge" id="personCountBadge">加载中...</span>
         </div>
 
-        <!-- ===== 明细表格 ===== -->
-        <div id="tableWrapper" class="table-wrapper">
-            <div class="table-header">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <h3><i class="fas fa-list-ul"></i> 缺陷明细</h3>
-                    <div class="filter-group">
-                        <label>👤 筛选:</label>
-                        <select id="ownerFilter" onchange="applyOwnerFilter()">
-                            <option value="">全部人员</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>📌 中心:</label>
-                        <select id="centerFilter" onchange="applyOwnerFilter()">
-                            <option value="">全部中心</option>
-                            <option value="智能驾驶与座舱开发中心">智能驾驶与座舱开发中心</option>
-                            <option value="智能电子电气开发中心">智能电子电气开发中心</option>
-                            <option value="其他中心">其他中心</option>
-                        </select>
-                    </div>
+        <!-- ===== 上传区域 ===== -->
+        <div id="fileUploadArea" class="file-upload-area hidden">
+            <i class="fas fa-file-excel" style="font-size:38px;color:#3b82f6;display:block;margin-bottom:10px;"></i>
+            <p style="font-size:16px;color:#64748b;margin-bottom:8px;">📄 未找到 data.xlsx 或 data.xls</p>
+            <label for="fileInput"><i class="fas fa-upload"></i> 手动选择 Excel 文件</label>
+            <p style="font-size:13px;color:#94a3b8;margin-top:8px;">支持 .xlsx 或 .xls 格式</p>
+            <div style="font-size:12px;color:#94a3b8;margin-top:4px;" id="fileNameDisplay"></div>
+        </div>
+
+        <!-- ===== 加载/错误 ===== -->
+        <div id="loadingIndicator" class="loading hidden"><i class="fas fa-spinner fa-pulse"></i> 正在解析数据...</div>
+        <div id="errorMsg" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i>
+            <p id="errorText"></p>
+        </div>
+
+        <!-- ===== 内容区域 ===== -->
+        <div id="contentArea" class="hidden">
+            <!-- ===== KPI ===== -->
+            <div id="kpiGrid" class="kpi-grid"></div>
+
+            <!-- ===== 整体统计表格 ===== -->
+            <div id="statsWrapper" class="stats-wrapper">
+                <div class="table-header">
+                    <h3><i class="fas fa-chart-pie"></i> 项目 × 中心 × 专业 整体统计</h3>
+                    <span class="stats-count" id="statsCount"><i class="fas fa-database"></i> 共 0 条</span>
                 </div>
-                <span id="recordCount" style="font-size:12px;color:#94a3b8;"><i class="fas fa-database"></i> 共 0 条</span>
+                <div class="stats-table-wrap">
+                    <table id="statsTable">
+                        <thead>
+                            <tr>
+                                <th>项目</th>
+                                <th>中心</th>
+                                <th>专业</th>
+                                <th>问题数</th>
+                                <th>软件分</th>
+                                <th>硬件分</th>
+                                <th>总分</th>
+                                <th>S1</th>
+                                <th>S2</th>
+                                <th>S3</th>
+                                <th>S4</th>
+                                <th>A</th>
+                                <th>B</th>
+                                <th>C</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statsBody"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="table-scroll">
-                <table>
-                    <thead><tr><th>序号</th><th>主单状态</th><th>改善状态</th><th>一元表序号</th><th>项目</th><th>重要度</th><th>责任人</th><th>匹配中心</th><th>匹配专业</th><th>软件分</th><th>硬件分</th><th>总分</th><th>不符合现象</th><th>录入日期</th></tr></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-            </div>
-        </div>
 
-        <div id="footerNote" class="footer-note">
-            <i class="fas fa-cog"></i> projectConfig.json · personConfig.json · 🟡未关闭计分 · ✅已关闭不计分
+            <!-- ===== 目标差值图表 ===== -->
+            <div id="targetChartRow" class="chart-grid" style="margin-bottom:16px;">
+                <div id="targetChartContainer" class="chart-card">
+                    <div class="chart-title"><i class="fas fa-bullseye"></i> 项目1 目标差值</div>
+                    <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
+                </div>
+                <div id="targetChartContainer2" class="chart-card">
+                    <div class="chart-title"><i class="fas fa-bullseye"></i> 项目2 目标差值</div>
+                    <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
+                </div>
+                <div class="chart-card" style="visibility:hidden;"></div>
+            </div>
+
+            <!-- ===== 其他图表 ===== -->
+            <div id="chartGrid" class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div>
+                    <div id="chartStatusSW" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (硬件分)</div>
+                    <div id="chartStatusHW" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (软件分)</div>
+                    <div id="chartImportanceSW" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (硬件分)</div>
+                    <div id="chartImportanceHW" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-building"></i> 匹配中心分布</div>
+                    <div id="chartDept" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-chart-bar"></i> 各项目·中心软件/硬件分值</div>
+                    <div id="chartProjectCompare" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div>
+                    <div id="chartGantt" class="chart-container" style="height:280px;"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div>
+                    <div id="chartScore" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div>
+                    <div id="chartSource" class="chart-container"></div>
+                </div>
+            </div>
+
+            <!-- ===== 明细表格 ===== -->
+            <div id="tableWrapper" class="table-wrapper">
+                <div class="table-header">
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <h3><i class="fas fa-list-ul"></i> 缺陷明细</h3>
+                        <div class="filter-group">
+                            <label>👤 筛选:</label>
+                            <select id="ownerFilter" onchange="applyOwnerFilter()">
+                                <option value="">全部人员</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>📌 中心:</label>
+                            <select id="centerFilter" onchange="applyOwnerFilter()">
+                                <option value="">全部中心</option>
+                                <option value="智能驾驶与座舱开发中心">智能驾驶与座舱开发中心</option>
+                                <option value="智能电子电气开发中心">智能电子电气开发中心</option>
+                                <option value="其他中心">其他中心</option>
+                            </select>
+                        </div>
+                    </div>
+                    <span id="recordCount" style="font-size:12px;color:#94a3b8;"><i class="fas fa-database"></i> 共 0 条</span>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>主单状态</th>
+                                <th>改善状态</th>
+                                <th>一元表序号</th>
+                                <th>项目</th>
+                                <th>重要度</th>
+                                <th>责任人</th>
+                                <th>匹配中心</th>
+                                <th>匹配专业</th>
+                                <th>软件分</th>
+                                <th>硬件分</th>
+                                <th>总分</th>
+                                <th>不符合现象</th>
+                                <th>录入日期</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="footerNote" class="footer-note">
+                <i class="fas fa-cog"></i> projectConfig.json · personConfig.json · 🟡未关闭计分 · ✅已关闭不计分
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-// ============================================================
-// ★★★ 所有配置从 JSON 加载 ★★★
-// ============================================================
+    <script>
+        // ============================================================
+        // ★★★ 所有配置从 JSON 加载 ★★★
+        // ============================================================
 
-// ============================================================
-// 全局状态
-// ============================================================
-var currentData = [];
-var chartInstances = {};
-var personMap = {};
-var appConfig = null;
-var allCenters = [];
-var allProfessions = [];
-var excelLoading = false;
-var displayConfig = {};
-var configLoaded = { project: false, person: false, display: false };
+        // ============================================================
+        // 全局状态
+        // ============================================================
+        var currentData = [];
+        var chartInstances = {};
+        var personMap = {};
+        var appConfig = null;
+        var allCenters = [];
+        var allProfessions = [];
+        var excelLoading = false;
+        var displayConfig = {};
+        var configLoaded = { project: false, person: false, display: false };
 
-// ============================================================
-// ★★★ applyDisplayConfig ★★★
-// ============================================================
-function applyDisplayConfig() {
-    var modules = displayConfig.modules || {};
-    var map = {
-        header: 'header',
-        statusBar: 'statusBar',
-        filterBar: 'filterBar',
-        kpiGrid: 'kpiGrid',
-        statsTable: 'statsWrapper',
-        targetChart: 'targetChartContainer',
-        targetChart2: 'targetChartContainer2',
-        chartGrid: 'chartGrid',
-        tableWrapper: 'tableWrapper',
-        footerNote: 'footerNote',
-        fileUploadArea: 'fileUploadArea',
-        loadingIndicator: 'loadingIndicator',
-        errorMsg: 'errorMsg'
-    };
-    for (var k in map) {
-        if (map.hasOwnProperty(k)) {
-            var id = map[k];
-            var el = document.getElementById(id);
-            if (el) {
-                var show = modules[k] !== undefined ? modules[k] : true;
-                if (show) {
-                    el.classList.remove('module-hidden');
-                    el.style.cssText = '';
-                } else {
-                    el.classList.add('module-hidden');
-                    el.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:0!important;';
-                    el.innerHTML = '';
-                }
-            }
-        }
-    }
-}
-
-// ============================================================
-// 安全设置
-// ============================================================
-function safeSetText(id, text) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = text;
-}
-function safeSetHTML(id, html) {
-    var el = document.getElementById(id);
-    if (el) el.innerHTML = html;
-}
-
-// ============================================================
-// ★★★ 配置加载 ★★★
-// ============================================================
-function loadAllConfigs() {
-    // 1. 加载 projectConfig.json
-    fetch('projectConfig.json?t=' + Date.now())
-        .then(function(res) {
-            if (!res.ok) throw new Error('projectConfig.json 不存在');
-            return res.json();
-        })
-        .then(function(data) {
-            appConfig = data;
-            configLoaded.project = true;
-            safeSetText('swWeightStatus', '已配置');
-            safeSetText('hwWeightStatus', '已配置');
-            var projects = appConfig.projectConfig.projects || [];
-            safeSetText('projectStatus', projects.length + ' 个');
-            console.log('✅ projectConfig.json 加载成功');
-            checkAllConfigsLoaded();
-        })
-        .catch(function(err) {
-            console.error('❌ projectConfig.json 加载失败:', err.message);
-            safeSetText('swWeightStatus', '⚠️ 未加载');
-            safeSetText('hwWeightStatus', '⚠️ 未加载');
-            safeSetText('projectStatus', '⚠️ 未加载');
-            showError('projectConfig.json 加载失败: ' + err.message);
-        });
-
-    // 2. 加载 personConfig.json
-    fetch('personConfig.json?t=' + Date.now())
-        .then(function(res) {
-            if (!res.ok) throw new Error('personConfig.json 不存在');
-            return res.json();
-        })
-        .then(function(data) {
-            buildPersonMap(data);
-            configLoaded.person = true;
-            var count = Object.keys(personMap).length;
-            safeSetText('personCountBadge', '已加载: ' + count + ' 人');
-            console.log('✅ personConfig.json 加载成功，人数:', count);
-            collectCentersAndProfessions(data);
-            checkAllConfigsLoaded();
-        })
-        .catch(function(err) {
-            console.error('❌ personConfig.json 加载失败:', err.message);
-            safeSetText('personCountBadge', '⚠️ 未加载');
-            showError('personConfig.json 加载失败: ' + err.message);
-        });
-
-    // 3. 加载 displayConfig.json
-    fetch('displayConfig.json?t=' + Date.now())
-        .then(function(res) {
-            if (!res.ok) throw new Error('displayConfig.json 不存在');
-            return res.json();
-        })
-        .then(function(data) {
-            displayConfig = data;
-            configLoaded.display = true;
-            applyDisplayConfig();
-            console.log('✅ displayConfig.json 加载成功');
-            checkAllConfigsLoaded();
-        })
-        .catch(function() {
-            displayConfig = { modules: { header: true, statusBar: false, filterBar: true, kpiGrid: true, statsTable: true, targetChart: true, chartGrid: true, tableWrapper: true, footerNote: true, fileUploadArea: true, loadingIndicator: true, errorMsg: true } };
-            configLoaded.display = true;
-            applyDisplayConfig();
-            console.log('ℹ️ 使用内置 displayConfig');
-            checkAllConfigsLoaded();
-        });
-}
-
-// ★★★ tryStartApp ★★★
-function checkAllConfigsLoaded() {
-    if (configLoaded.project && configLoaded.person && configLoaded.display) {
-        console.log('✅ 所有配置加载完成');
-        updateProjectBadges();
-        if (!window._appStarted) {
-            window._appStarted = true;
-            autoLoadExcel();
-        }
-    }
-}
-
-function collectCentersAndProfessions(data) {
-    allCenters = [];
-    allProfessions = [];
-    for (var dept in data) {
-        if (data.hasOwnProperty(dept)) {
-            allCenters.push(dept);
-            var professions = data[dept];
-            for (var prof in professions) {
-                if (professions.hasOwnProperty(prof)) {
-                    if (allProfessions.indexOf(prof) === -1) {
-                        allProfessions.push(prof);
-                    }
-                }
-            }
-        }
-    }
-}
-
-function buildPersonMap(data) {
-    personMap = {};
-    for (var dept in data) {
-        if (data.hasOwnProperty(dept)) {
-            var professions = data[dept];
-            for (var prof in professions) {
-                if (professions.hasOwnProperty(prof)) {
-                    var persons = professions[prof];
-                    for (var i = 0; i < persons.length; i++) {
-                        personMap[persons[i]] = { department: dept, profession: prof };
-                    }
-                }
-            }
-        }
-    }
-}
-
-function updateProjectBadges() {
-    if (!appConfig) return;
-    var projects = appConfig.projectConfig.projects || [];
-    if (projects.length > 0) {
-        safeSetText('project1Badge', projects[0].name + ': 0');
-    }
-    if (projects.length > 1) {
-        safeSetText('project2Badge', projects[1].name + ': 0');
-    }
-    safeSetText('projectOtherBadge', '其他: 0');
-}
-
-// ============================================================
-// 获取匹配中心/专业
-// ============================================================
-function getMatchedCenter(dept) {
-    if (!dept || dept === '' || dept === '未知') return '其他中心';
-    for (var i = 0; i < allCenters.length; i++) {
-        if (dept === allCenters[i]) return dept;
-    }
-    return '其他中心';
-}
-
-function getMatchedProfession(prof) {
-    if (!prof || prof === '' || prof === '未知') return '其他专业';
-    for (var i = 0; i < allProfessions.length; i++) {
-        if (prof === allProfessions[i]) return prof;
-    }
-    return '其他专业';
-}
-
-// ============================================================
-// ★★★ 自动加载 Excel ★★★
-// ============================================================
-function autoLoadExcel() {
-    if (excelLoading) return;
-    excelLoading = true;
-
-    // 显示加载状态
-    document.getElementById('loadingIndicator').classList.remove('hidden');
-    document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('contentArea').classList.add('hidden');
-    document.getElementById('contentArea').style.display = 'none';
-
-    fetch('data.xls')
-        .then(function(res) {
-            if (res.ok) {
-                return res.arrayBuffer().then(function(buffer) {
-                    console.log('✅ 自动加载 data.xls 成功');
-                    var wb = XLSX.read(buffer, { type: 'array' });
-                    processWorkbook(wb, 'data.xls');
-                });
-            } else {
-                return fetch('data.xlsx', { cache: 'reload' })
-                    .then(function(res2) {
-                        if (res2.ok) {
-                            return res2.arrayBuffer().then(function(buffer) {
-                                console.log('✅ 自动加载 data.xlsx 成功');
-                                var wb = XLSX.read(buffer, { type: 'array' });
-                                processWorkbook(wb, 'data.xlsx');
-                            });
+        // ============================================================
+        // ★★★ applyDisplayConfig ★★★
+        // ============================================================
+        function applyDisplayConfig() {
+            var modules = displayConfig.modules || {};
+            var map = {
+                header: 'header',
+                statusBar: 'statusBar',
+                filterBar: 'filterBar',
+                kpiGrid: 'kpiGrid',
+                statsTable: 'statsWrapper',
+                targetChart: 'targetChartContainer',
+                targetChart2: 'targetChartContainer2',
+                chartGrid: 'chartGrid',
+                tableWrapper: 'tableWrapper',
+                footerNote: 'footerNote',
+                fileUploadArea: 'fileUploadArea',
+                loadingIndicator: 'loadingIndicator',
+                errorMsg: 'errorMsg'
+            };
+            for (var k in map) {
+                if (map.hasOwnProperty(k)) {
+                    var id = map[k];
+                    var el = document.getElementById(id);
+                    if (el) {
+                        var show = modules[k] !== undefined ? modules[k] : true;
+                        if (show) {
+                            el.classList.remove('module-hidden');
+                            el.style.cssText = '';
                         } else {
-                            throw new Error('文件不存在');
+                            el.classList.add('module-hidden');
+                            el.style.cssText =
+                            'display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:0!important;';
+                            el.innerHTML = '';
                         }
-                    });
-            }
-        })
-        .catch(function() {
-            console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面');
-            showManualSelect();
-        });
-}
-
-function showManualSelect() {
-    document.getElementById('fileUploadArea').classList.remove('hidden');
-    document.getElementById('fileUploadArea').style.display = 'block';
-    document.getElementById('contentArea').classList.remove('hidden');
-    document.getElementById('contentArea').style.display = 'block';
-    document.getElementById('loadingIndicator').classList.add('hidden');
-    document.getElementById('loadingIndicator').style.display = 'none';
-    document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
-    document.getElementById('dataStatus').textContent = '请选择文件';
-    safeSetText('totalCount', '0');
-    excelLoading = false;
-}
-
-// ============================================================
-// 手动选择 Excel
-// ============================================================
-function handleFileSelect(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    if (!appConfig || Object.keys(personMap).length === 0) {
-        alert('配置尚未加载完成，请稍候再试。');
-        return;
-    }
-
-    safeSetText('fileNameDisplay', '📄 ' + file.name);
-    loadExcelFile(file);
-}
-
-function loadExcelFile(file) {
-    document.getElementById('loadingIndicator').classList.remove('hidden');
-    document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('contentArea').classList.add('hidden');
-    document.getElementById('contentArea').style.display = 'none';
-    
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            var data = new Uint8Array(e.target.result);
-            var wb = XLSX.read(data, { type: 'array' });
-            processWorkbook(wb, file.name);
-        } catch (err) {
-            showError('解析失败: ' + err.message);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function processWorkbook(wb, fileName) {
-    var sheet = wb.Sheets[wb.SheetNames[0]];
-    var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    if (!json || json.length === 0) {
-        showError('Excel 文件为空');
-        return;
-    }
-
-    var headers = Object.keys(json[0]);
-    console.log('✅ 检测到列名:', headers);
-
-    var serialCol = null, statusCol = null, ownerCol = null, importanceCol = null, descCol = null, dateCol = null, mainStatusCol = null;
-    for (var i = 0; i < headers.length; i++) {
-        var h = headers[i];
-        if (h === '一元表序号' || h === '一元表号') serialCol = h;
-        if (h === '改善状态' || h === '改善进度') statusCol = h;
-        if (h === '负责人' || h === '责任人') ownerCol = h;
-        if (h === '重要度' || h === '重要性') importanceCol = h;
-        if (h === '不符合现象' || h === '故障现象' || h === '现象描述') descCol = h;
-        if (h === '录入日期' || h === '问题录入日期' || h === '日期') dateCol = h;
-        if (h === '主单状态' || h === '状态') mainStatusCol = h;
-    }
-    console.log('📌 责任人列:', ownerCol || '未找到');
-
-    var filterValues = appConfig.statusFilter.values || ['1/5', '2/5', '3/5', '4/5', '5/5'];
-
-    var records = [];
-    for (var idx = 0; idx < json.length; idx++) {
-        var row = json[idx];
-        var get = function(names) {
-            for (var n = 0; n < names.length; n++) {
-                if (row[names[n]] !== undefined && row[names[n]] !== null && row[names[n]] !== '') {
-                    return String(row[names[n]]).trim();
+                    }
                 }
             }
-            return '';
-        };
-
-        var serialNo = (serialCol && row[serialCol] !== undefined && row[serialCol] !== '') ? String(row[serialCol]).trim() : get(['一元表序号', '一元表号']);
-        var improveStatus = (statusCol && row[statusCol] !== undefined && row[statusCol] !== '') ? String(row[statusCol]).trim() : get(['改善状态', '改善进度']);
-        var owner = (ownerCol && row[ownerCol] !== undefined && row[ownerCol] !== '') ? String(row[ownerCol]).trim() : get(['负责人', '责任人']);
-        var importance = (importanceCol && row[importanceCol] !== undefined && row[importanceCol] !== '') ? String(row[importanceCol]).trim() : get(['重要度', '重要性']);
-        var desc = (descCol && row[descCol] !== undefined && row[descCol] !== '') ? String(row[descCol]).trim() : get(['不符合现象', '故障现象']);
-        var date = (dateCol && row[dateCol] !== undefined && row[dateCol] !== '') ? String(row[dateCol]).trim() : get(['录入日期', '问题录入日期']);
-        var mainStatus = (mainStatusCol && row[mainStatusCol] !== undefined && row[mainStatusCol] !== '') ? String(row[mainStatusCol]).trim() : get(['主单状态', '状态']);
-
-        var isTracked = filterValues.indexOf(improveStatus) !== -1;
-        if (!isTracked) continue;
-
-        var isOpen = (improveStatus === '1/5' || improveStatus === '2/5' || improveStatus === '3/5' || improveStatus === '4/5');
-        var isClosed = (improveStatus === '5/5');
-
-        var project = matchProject(serialNo);
-        var projectName = project ? project.name : '其他';
-        var projectId = project ? project.id : 'other';
-
-        var personInfo = getPersonInfo(owner);
-        var matchedDept = personInfo ? personInfo.department : null;
-        var matchedProf = personInfo ? personInfo.profession : null;
-
-        var displayDept = getMatchedCenter(matchedDept);
-        var displayProf = getMatchedProfession(matchedProf);
-
-        var swScore = 0, hwScore = 0, totalScore = 0;
-        if (isOpen) {
-            var scores = calcScores(importance);
-            swScore = scores.swScore;
-            hwScore = scores.hwScore;
-            totalScore = scores.totalScore;
         }
 
-        records.push({
-            id: idx + 1,
-            mainStatus: mainStatus || '未知',
-            improveStatus: improveStatus || '未知',
-            serialNo: serialNo || '未知',
-            projectName: projectName,
-            projectId: projectId,
-            importance: importance || 'C',
-            owner: owner || '未知',
-            matchedDept: displayDept,
-            matchedProf: displayProf,
-            swScore: swScore,
-            hwScore: hwScore,
-            totalScore: totalScore,
-            desc: desc || '',
-            date: date || '',
-            isOpen: isOpen,
-            isClosed: isClosed,
-            isTracked: isTracked
-        });
-    }
+        // ============================================================
+        // 安全设置
+        // ============================================================
+        function safeSetText(id, text) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = text;
+        }
 
-    currentData = records;
+        function safeSetHTML(id, html) {
+            var el = document.getElementById(id);
+            if (el) el.innerHTML = html;
+        }
 
-    document.getElementById('fileUploadArea').classList.add('hidden');
-    document.getElementById('fileUploadArea').style.display = 'none';
-    document.getElementById('contentArea').classList.remove('hidden');
-    document.getElementById('contentArea').style.display = 'block';
-    document.getElementById('loadingIndicator').classList.add('hidden');
-    document.getElementById('loadingIndicator').style.display = 'none';
-    document.getElementById('errorMsg').classList.add('hidden');
+        // ============================================================
+        // ★★★ 配置加载 ★★★
+        // ============================================================
+        function loadAllConfigs() {
+            // 1. 加载 projectConfig.json
+            fetch('projectConfig.json?t=' + Date.now())
+                .then(function(res) {
+                    if (!res.ok) throw new Error('projectConfig.json 不存在');
+                    return res.json();
+                })
+                .then(function(data) {
+                    appConfig = data;
+                    configLoaded.project = true;
+                    safeSetText('swWeightStatus', '已配置');
+                    safeSetText('hwWeightStatus', '已配置');
+                    var projects = appConfig.projectConfig.projects || [];
+                    safeSetText('projectStatus', projects.length + ' 个');
+                    console.log('✅ projectConfig.json 加载成功');
+                    checkAllConfigsLoaded();
+                })
+                .catch(function(err) {
+                    console.error('❌ projectConfig.json 加载失败:', err.message);
+                    safeSetText('swWeightStatus', '⚠️ 未加载');
+                    safeSetText('hwWeightStatus', '⚠️ 未加载');
+                    safeSetText('projectStatus', '⚠️ 未加载');
+                    showError('projectConfig.json 加载失败: ' + err.message);
+                });
 
-    safeSetText('fileInfo', '📊 ' + fileName + ' · ' + records.length + ' 条');
-    safeSetText('dataStatus', '已加载');
-    safeSetText('totalCount', records.length);
+            // 2. 加载 personConfig.json
+            fetch('personConfig.json?t=' + Date.now())
+                .then(function(res) {
+                    if (!res.ok) throw new Error('personConfig.json 不存在');
+                    return res.json();
+                })
+                .then(function(data) {
+                    buildPersonMap(data);
+                    configLoaded.person = true;
+                    var count = Object.keys(personMap).length;
+                    safeSetText('personCountBadge', '已加载: ' + count + ' 人');
+                    console.log('✅ personConfig.json 加载成功，人数:', count);
+                    collectCentersAndProfessions(data);
+                    checkAllConfigsLoaded();
+                })
+                .catch(function(err) {
+                    console.error('❌ personConfig.json 加载失败:', err.message);
+                    safeSetText('personCountBadge', '⚠️ 未加载');
+                    showError('personConfig.json 加载失败: ' + err.message);
+                });
 
-    excelLoading = false;
-    renderAll(records);
-}
+            // 3. 加载 displayConfig.json
+            fetch('displayConfig.json?t=' + Date.now())
+                .then(function(res) {
+                    if (!res.ok) throw new Error('displayConfig.json 不存在');
+                    return res.json();
+                })
+                .then(function(data) {
+                    displayConfig = data;
+                    configLoaded.display = true;
+                    applyDisplayConfig();
+                    console.log('✅ displayConfig.json 加载成功');
+                    checkAllConfigsLoaded();
+                })
+                .catch(function() {
+                    displayConfig = { modules: { header: true, statusBar: false, filterBar: true, kpiGrid: true,
+                            statsTable: true, targetChart: true, chartGrid: true, tableWrapper: true,
+                            footerNote: true, fileUploadArea: true, loadingIndicator: true, errorMsg: true } };
+                    configLoaded.display = true;
+                    applyDisplayConfig();
+                    console.log('ℹ️ 使用内置 displayConfig');
+                    checkAllConfigsLoaded();
+                });
+        }
 
-function showError(msg) {
-    document.getElementById('loadingIndicator').classList.add('hidden');
-    document.getElementById('errorMsg').classList.remove('hidden');
-    safeSetText('errorText', msg);
-    document.getElementById('contentArea').classList.add('hidden');
-    excelLoading = false;
-}
+        // ★★★ checkAllConfigsLoaded ★★★
+        function checkAllConfigsLoaded() {
+            if (configLoaded.project && configLoaded.person && configLoaded.display) {
+                console.log('✅ 所有配置加载完成');
+                updateProjectBadges();
+                if (!window._appStarted) {
+                    window._appStarted = true;
+                    // 先显示内容区域
+                    document.getElementById('contentArea').classList.remove('hidden');
+                    document.getElementById('contentArea').style.display = 'block';
+                    document.getElementById('loadingIndicator').classList.add('hidden');
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    // 然后加载 Excel
+                    autoLoadExcel();
+                }
+            }
+        }
 
-// ============================================================
-// 项目匹配
-// ============================================================
-function matchProject(serialNo) {
-    if (!serialNo || !appConfig) return null;
-    var projects = appConfig.projectConfig.projects || [];
-    for (var i = 0; i < projects.length; i++) {
-        if (serialNo.includes(projects[i].keyword)) return projects[i];
-    }
-    return null;
-}
+        function collectCentersAndProfessions(data) {
+            allCenters = [];
+            allProfessions = [];
+            for (var dept in data) {
+                if (data.hasOwnProperty(dept)) {
+                    allCenters.push(dept);
+                    var professions = data[dept];
+                    for (var prof in professions) {
+                        if (professions.hasOwnProperty(prof)) {
+                            if (allProfessions.indexOf(prof) === -1) {
+                                allProfessions.push(prof);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-// ============================================================
-// 计算分值
-// ============================================================
-function calcScores(importance) {
-    if (!appConfig) return { swScore: 0, hwScore: 0, totalScore: 0 };
-    var sw = appConfig.weightConfigs.software.weights || {};
-    var hw = appConfig.weightConfigs.hardware.weights || {};
-    var swScore = sw[importance] !== undefined ? sw[importance] : (sw.default || 0);
-    var hwScore = hw[importance] !== undefined ? hw[importance] : (hw.default || 0);
-    return { swScore: swScore, hwScore: hwScore, totalScore: swScore + hwScore };
-}
+        function buildPersonMap(data) {
+            personMap = {};
+            for (var dept in data) {
+                if (data.hasOwnProperty(dept)) {
+                    var professions = data[dept];
+                    for (var prof in professions) {
+                        if (professions.hasOwnProperty(prof)) {
+                            var persons = professions[prof];
+                            for (var i = 0; i < persons.length; i++) {
+                                personMap[persons[i]] = { department: dept, profession: prof };
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-// ============================================================
-// 人员匹配
-// ============================================================
-function getPersonInfo(owner) {
-    if (!owner || owner === '' || owner === '未知') return null;
-    if (personMap[owner]) return personMap[owner];
-    return null;
-}
+        function updateProjectBadges() {
+            if (!appConfig) return;
+            var projects = appConfig.projectConfig.projects || [];
+            if (projects.length > 0) {
+                safeSetText('project1Badge', projects[0].name + ': 0');
+            }
+            if (projects.length > 1) {
+                safeSetText('project2Badge', projects[1].name + ': 0');
+            }
+            safeSetText('projectOtherBadge', '其他: 0');
+        }
 
-// ============================================================
-// 分组工具
-// ============================================================
-function groupBy(arr, key) {
-    var map = {};
-    for (var i = 0; i < arr.length; i++) {
-        var v = arr[i][key] || '未分类';
-        v = String(v);
-        if (map[v] === undefined) map[v] = 0;
-        map[v]++;
-    }
-    var result = [];
-    for (var k in map) {
-        if (map.hasOwnProperty(k)) result.push([k, map[k]]);
-    }
-    result.sort(function(a, b) { return b[1] - a[1]; });
-    return result;
-}
+        // ============================================================
+        // 获取匹配中心/专业
+        // ============================================================
+        function getMatchedCenter(dept) {
+            if (!dept || dept === '' || dept === '未知') return '其他中心';
+            for (var i = 0; i < allCenters.length; i++) {
+                if (dept === allCenters[i]) return dept;
+            }
+            return '其他中心';
+        }
 
-function groupBySum(arr, key, sumKey) {
-    var map = {};
-    for (var i = 0; i < arr.length; i++) {
-        var v = arr[i][key] || '未分类';
-        v = String(v);
-        if (map[v] === undefined) map[v] = 0;
-        map[v] += (arr[i][sumKey] || 0);
-    }
-    var result = [];
-    for (var k in map) {
-        if (map.hasOwnProperty(k)) result.push([k, map[k]]);
-    }
-    result.sort(function(a, b) { return b[1] - a[1]; });
-    return result;
-}
+        function getMatchedProfession(prof) {
+            if (!prof || prof === '' || prof === '未知') return '其他专业';
+            for (var i = 0; i < allProfessions.length; i++) {
+                if (prof === allProfessions[i]) return prof;
+            }
+            return '其他专业';
+        }
 
-// ============================================================
-// ★★★ 更新人员筛选下拉列表 ★★★
-// ============================================================
-function updateOwnerFilter(data) {
-    var filterSelect = document.getElementById('ownerFilter');
-    if (!filterSelect) return;
+        // ============================================================
+        // ★★★ 自动加载 Excel ★★★
+        // ============================================================
+        function autoLoadExcel() {
+            if (excelLoading) return;
+            excelLoading = true;
 
-    var currentValue = filterSelect.value;
+            console.log('🔍 开始查找 Excel 文件...');
 
-    var ownerMap = {};
-    for (var i = 0; i < data.length; i++) {
-        var d = data[i];
-        if (d.owner && d.owner !== '' && d.owner !== '未知') {
-            var key = d.owner;
-            if (!ownerMap[key]) {
-                ownerMap[key] = {
-                    name: key,
-                    dept: d.matchedDept,
-                    isCenter: (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心')
+            // 先尝试 data.xls
+            fetch('data.xls', { cache: 'reload' })
+                .then(function(res) {
+                    if (res.ok) {
+                        console.log('✅ 找到 data.xls');
+                        return res.arrayBuffer().then(function(buffer) {
+                            var wb = XLSX.read(buffer, { type: 'array' });
+                            processWorkbook(wb, 'data.xls');
+                        });
+                    } else {
+                        console.log('ℹ️ data.xls 不存在，尝试 data.xlsx');
+                        return fetch('data.xlsx', { cache: 'reload' })
+                            .then(function(res2) {
+                                if (res2.ok) {
+                                    console.log('✅ 找到 data.xlsx');
+                                    return res2.arrayBuffer().then(function(buffer) {
+                                        var wb = XLSX.read(buffer, { type: 'array' });
+                                        processWorkbook(wb, 'data.xlsx');
+                                    });
+                                } else {
+                                    throw new Error('文件不存在');
+                                }
+                            });
+                    }
+                })
+                .catch(function(err) {
+                    console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面', err.message);
+                    excelLoading = false;
+                    showManualSelect();
+                });
+        }
+
+        function showManualSelect() {
+            document.getElementById('fileUploadArea').classList.remove('hidden');
+            document.getElementById('fileUploadArea').style.display = 'block';
+            document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
+            document.getElementById('dataStatus').textContent = '请选择文件';
+            safeSetText('totalCount', '0');
+        }
+
+        // ============================================================
+        // 手动选择 Excel
+        // ============================================================
+        function handleFileSelect(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            if (!appConfig || Object.keys(personMap).length === 0) {
+                alert('配置尚未加载完成，请稍候再试。');
+                return;
+            }
+
+            safeSetText('fileNameDisplay', '📄 ' + file.name);
+            loadExcelFile(file);
+        }
+
+        function loadExcelFile(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var wb = XLSX.read(data, { type: 'array' });
+                    processWorkbook(wb, file.name);
+                } catch (err) {
+                    showError('解析失败: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processWorkbook(wb, fileName) {
+            var sheet = wb.Sheets[wb.SheetNames[0]];
+            var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            if (!json || json.length === 0) {
+                showError('Excel 文件为空');
+                return;
+            }
+
+            var headers = Object.keys(json[0]);
+            console.log('✅ 检测到列名:', headers);
+
+            var serialCol = null,
+                statusCol = null,
+                ownerCol = null,
+                importanceCol = null,
+                descCol = null,
+                dateCol = null,
+                mainStatusCol = null;
+            for (var i = 0; i < headers.length; i++) {
+                var h = headers[i];
+                if (h === '一元表序号' || h === '一元表号') serialCol = h;
+                if (h === '改善状态' || h === '改善进度') statusCol = h;
+                if (h === '负责人' || h === '责任人') ownerCol = h;
+                if (h === '重要度' || h === '重要性') importanceCol = h;
+                if (h === '不符合现象' || h === '故障现象' || h === '现象描述') descCol = h;
+                if (h === '录入日期' || h === '问题录入日期' || h === '日期') dateCol = h;
+                if (h === '主单状态' || h === '状态') mainStatusCol = h;
+            }
+            console.log('📌 责任人列:', ownerCol || '未找到');
+
+            var filterValues = appConfig.statusFilter.values || ['1/5', '2/5', '3/5', '4/5', '5/5'];
+
+            var records = [];
+            for (var idx = 0; idx < json.length; idx++) {
+                var row = json[idx];
+                var get = function(names) {
+                    for (var n = 0; n < names.length; n++) {
+                        if (row[names[n]] !== undefined && row[names[n]] !== null && row[names[n]] !== '') {
+                            return String(row[names[n]]).trim();
+                        }
+                    }
+                    return '';
                 };
+
+                var serialNo = (serialCol && row[serialCol] !== undefined && row[serialCol] !== '') ? String(row[
+                    serialCol]).trim() : get(['一元表序号', '一元表号']);
+                var improveStatus = (statusCol && row[statusCol] !== undefined && row[statusCol] !== '') ? String(row[
+                    statusCol]).trim() : get(['改善状态', '改善进度']);
+                var owner = (ownerCol && row[ownerCol] !== undefined && row[ownerCol] !== '') ? String(row[ownerCol])
+                    .trim() : get(['负责人', '责任人']);
+                var importance = (importanceCol && row[importanceCol] !== undefined && row[importanceCol] !== '') ?
+                    String(row[importanceCol]).trim() : get(['重要度', '重要性']);
+                var desc = (descCol && row[descCol] !== undefined && row[descCol] !== '') ? String(row[descCol])
+                    .trim() : get(['不符合现象', '故障现象']);
+                var date = (dateCol && row[dateCol] !== undefined && row[dateCol] !== '') ? String(row[dateCol])
+                    .trim() : get(['录入日期', '问题录入日期']);
+                var mainStatus = (mainStatusCol && row[mainStatusCol] !== undefined && row[mainStatusCol] !== '') ?
+                    String(row[mainStatusCol]).trim() : get(['主单状态', '状态']);
+
+                var isTracked = filterValues.indexOf(improveStatus) !== -1;
+                if (!isTracked) continue;
+
+                var isOpen = (improveStatus === '1/5' || improveStatus === '2/5' || improveStatus === '3/5' ||
+                    improveStatus === '4/5');
+                var isClosed = (improveStatus === '5/5');
+
+                var project = matchProject(serialNo);
+                var projectName = project ? project.name : '其他';
+                var projectId = project ? project.id : 'other';
+
+                var personInfo = getPersonInfo(owner);
+                var matchedDept = personInfo ? personInfo.department : null;
+                var matchedProf = personInfo ? personInfo.profession : null;
+
+                var displayDept = getMatchedCenter(matchedDept);
+                var displayProf = getMatchedProfession(matchedProf);
+
+                var swScore = 0,
+                    hwScore = 0,
+                    totalScore = 0;
+                if (isOpen) {
+                    var scores = calcScores(importance);
+                    swScore = scores.swScore;
+                    hwScore = scores.hwScore;
+                    totalScore = scores.totalScore;
+                }
+
+                records.push({
+                    id: idx + 1,
+                    mainStatus: mainStatus || '未知',
+                    improveStatus: improveStatus || '未知',
+                    serialNo: serialNo || '未知',
+                    projectName: projectName,
+                    projectId: projectId,
+                    importance: importance || 'C',
+                    owner: owner || '未知',
+                    matchedDept: displayDept,
+                    matchedProf: displayProf,
+                    swScore: swScore,
+                    hwScore: hwScore,
+                    totalScore: totalScore,
+                    desc: desc || '',
+                    date: date || '',
+                    isOpen: isOpen,
+                    isClosed: isClosed,
+                    isTracked: isTracked
+                });
             }
-        }
-    }
 
-    var ownerList = [];
-    for (var k in ownerMap) {
-        if (ownerMap.hasOwnProperty(k)) {
-            ownerList.push(ownerMap[k]);
-        }
-    }
+            currentData = records;
 
-    ownerList.sort(function(a, b) {
-        if (a.isCenter && !b.isCenter) return -1;
-        if (!a.isCenter && b.isCenter) return 1;
-        return a.name.localeCompare(b.name);
-    });
+            document.getElementById('fileUploadArea').classList.add('hidden');
+            document.getElementById('fileUploadArea').style.display = 'none';
+            document.getElementById('loadingIndicator').classList.add('hidden');
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('errorMsg').classList.add('hidden');
 
-    var html = '<option value="">全部人员</option>';
-    for (var j = 0; j < ownerList.length; j++) {
-        var o = ownerList[j];
-        html += '<option value="' + o.name + '">' + o.name + '</option>';
-    }
-    filterSelect.innerHTML = html;
+            safeSetText('fileInfo', '📊 ' + fileName + ' · ' + records.length + ' 条');
+            safeSetText('dataStatus', '已加载');
+            safeSetText('totalCount', records.length);
 
-    if (currentValue) {
-        filterSelect.value = currentValue;
-    }
-}
-
-// ============================================================
-// ★★★ 应用人员筛选 ★★★
-// ============================================================
-function applyOwnerFilter() {
-    var filterSelect = document.getElementById('ownerFilter');
-    var centerSelect = document.getElementById('centerFilter');
-    if (!filterSelect || !centerSelect) return;
-
-    var ownerValue = filterSelect.value;
-    var centerValue = centerSelect.value;
-
-    renderTableWithFilter(currentData, ownerValue, centerValue);
-}
-
-// ============================================================
-// ★★★ 带筛选的表格渲染 ★★★
-// ============================================================
-function renderTableWithFilter(data, ownerFilter, centerFilter) {
-    var tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-
-    var sortedData = data.slice().sort(function(a, b) {
-        var aIsCenter = (a.matchedDept === '智能驾驶与座舱开发中心' || a.matchedDept === '智能电子电气开发中心');
-        var bIsCenter = (b.matchedDept === '智能驾驶与座舱开发中心' || b.matchedDept === '智能电子电气开发中心');
-        if (aIsCenter && !bIsCenter) return -1;
-        if (!aIsCenter && bIsCenter) return 1;
-        return a.id - b.id;
-    });
-
-    if (ownerFilter) {
-        sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
-    }
-    if (centerFilter) {
-        sortedData = sortedData.filter(function(d) { return d.matchedDept === centerFilter; });
-    }
-
-    document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
-
-    var display = sortedData.slice(0, 200);
-    var html = '';
-    for (var i = 0; i < display.length; i++) {
-        var d = display[i];
-        var isOpen = d.isOpen, isClosed = d.isClosed;
-        var rowClass = '';
-        var statusTag = '';
-        if (isOpen) { rowClass = 'filtered'; statusTag = '<span class="tag filter-matched">🟡未关闭</span>'; }
-        else if (isClosed) { rowClass = 'closed'; statusTag = '<span class="tag closed-tag">✅已关闭</span>'; }
-        else { statusTag = '<span class="tag">-</span>'; }
-
-        var isCenter = (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心');
-        if (isCenter) rowClass += ' center-priority';
-
-        var projectClass = d.projectId === 'project1' ? 'project1' : d.projectId === 'project2' ? 'project2' : 'project-other';
-        var showScore = isOpen;
-        var color = d.matchedDept === '智能驾驶与座舱开发中心' ? '#1d4ed8' : d.matchedDept === '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8';
-
-        var ownerDisplay = d.owner;
-        if (isCenter) {
-            ownerDisplay = '⭐ ' + d.owner;
+            excelLoading = false;
+            renderAll(records);
         }
 
-        html += '<tr class="' + rowClass + '">' +
-            '<td>' + d.id + '</td>' +
-            '<td><span class="status-badge ' + d.mainStatus + '">' + d.mainStatus + '</span></td>' +
-            '<td>' + statusTag + ' <span style="font-size:10px;color:#94a3b8;">' + d.improveStatus + '</span></td>' +
-            '<td style="font-size:10px;">' + d.serialNo + '</td>' +
-            '<td><span class="tag ' + projectClass + '">' + d.projectName + '</span></td>' +
-            '<td><span class="importance ' + d.importance + '">' + d.importance + '</span></td>' +
-            '<td style="font-size:11px;font-weight:600;' + (isCenter ? 'color:#1d4ed8;' : '') + '">' + ownerDisplay + '</td>' +
-            '<td style="font-size:10px;color:' + color + ';">' + d.matchedDept + '</td>' +
-            '<td style="font-size:10px;">' + d.matchedProf + '</td>' +
-            '<td class="score ' + (showScore ? (d.swScore >= 5 ? 'high' : d.swScore >= 1 ? 'medium' : 'low') : 'closed-score') + '">' + (showScore ? d.swScore : '-') + '</td>' +
-            '<td class="score ' + (showScore ? (d.hwScore >= 5 ? 'high' : d.hwScore >= 1 ? 'medium' : 'low') : 'closed-score') + '">' + (showScore ? d.hwScore : '-') + '</td>' +
-            '<td class="score ' + (showScore ? (d.totalScore >= 5 ? 'high' : d.totalScore >= 1 ? 'medium' : 'low') : 'closed-score') + '">' + (showScore ? d.totalScore.toFixed(1) : '-') + '</td>' +
-            '<td style="max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px;" title="' + d.desc + '">' + d.desc + '</td>' +
-            '<td style="font-size:10px;">' + d.date + '</td>' +
-            '</tr>';
-    }
-    if (sortedData.length > 200) {
-        html += '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:6px;font-size:11px;">... 仅显示前200条，共 ' + sortedData.length + ' 条</td></tr>';
-    }
-    tbody.innerHTML = html;
-}
-
-// ============================================================
-// ★★★ 渲染整体统计表格 ★★★
-// ============================================================
-function renderStatsTable(openData) {
-    var tbody = document.getElementById('statsBody');
-    if (!tbody) return;
-
-    var projectConfig = appConfig ? appConfig.projectConfig : null;
-    var projectIds = [];
-    var projectNames = {};
-    if (projectConfig && projectConfig.projects) {
-        for (var i = 0; i < projectConfig.projects.length; i++) {
-            var p = projectConfig.projects[i];
-            projectIds.push(p.id);
-            projectNames[p.id] = p.name;
+        function showError(msg) {
+            document.getElementById('loadingIndicator').classList.add('hidden');
+            document.getElementById('errorMsg').classList.remove('hidden');
+            safeSetText('errorText', msg);
+            document.getElementById('contentArea').classList.add('hidden');
+            excelLoading = false;
         }
-    }
-    projectIds.push('other');
-    projectNames['other'] = '其他项目';
 
-    var centerMap = {};
-    for (var i = 0; i < openData.length; i++) {
-        var d = openData[i];
-        var center = d.matchedDept || '其他中心';
-        var prof = d.matchedProf || '其他专业';
-        if (!centerMap[center]) {
-            centerMap[center] = {};
-        }
-        if (!centerMap[center][prof]) {
-            centerMap[center][prof] = 0;
-        }
-        centerMap[center][prof]++;
-    }
-
-    var centerList = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
-    var otherCenters = [];
-    for (var c in centerMap) {
-        if (centerMap.hasOwnProperty(c)) {
-            if (centerList.indexOf(c) === -1) {
-                otherCenters.push(c);
+        // ============================================================
+        // 项目匹配
+        // ============================================================
+        function matchProject(serialNo) {
+            if (!serialNo || !appConfig) return null;
+            var projects = appConfig.projectConfig.projects || [];
+            for (var i = 0; i < projects.length; i++) {
+                if (serialNo.includes(projects[i].keyword)) return projects[i];
             }
+            return null;
         }
-    }
-    otherCenters.sort();
-    centerList = centerList.concat(otherCenters);
 
-    var totalCount = 0;
-    var html = '';
+        // ============================================================
+        // 计算分值
+        // ============================================================
+        function calcScores(importance) {
+            if (!appConfig) return { swScore: 0, hwScore: 0, totalScore: 0 };
+            var sw = appConfig.weightConfigs.software.weights || {};
+            var hw = appConfig.weightConfigs.hardware.weights || {};
+            var swScore = sw[importance] !== undefined ? sw[importance] : (sw.default || 0);
+            var hwScore = hw[importance] !== undefined ? hw[importance] : (hw.default || 0);
+            return { swScore: swScore, hwScore: hwScore, totalScore: swScore + hwScore };
+        }
 
-    for (var pi = 0; pi < projectIds.length; pi++) {
-        var proj = projectIds[pi];
-        var projectName = projectNames[proj] || proj;
-        var projectData = openData.filter(function(d) { return d.projectId === proj; });
+        // ============================================================
+        // 人员匹配
+        // ============================================================
+        function getPersonInfo(owner) {
+            if (!owner || owner === '' || owner === '未知') return null;
+            if (personMap[owner]) return personMap[owner];
+            return null;
+        }
 
-        if (projectData.length === 0) continue;
+        // ============================================================
+        // 分组工具
+        // ============================================================
+        function groupBy(arr, key) {
+            var map = {};
+            for (var i = 0; i < arr.length; i++) {
+                var v = arr[i][key] || '未分类';
+                v = String(v);
+                if (map[v] === undefined) map[v] = 0;
+                map[v]++;
+            }
+            var result = [];
+            for (var k in map) {
+                if (map.hasOwnProperty(k)) result.push([k, map[k]]);
+            }
+            result.sort(function(a, b) { return b[1] - a[1]; });
+            return result;
+        }
 
-        var projectColor = proj === 'project1' ? '#1d4ed8' : proj === 'project2' ? '#7c3aed' : '#64748b';
-        html += '<tr class="stats-group-header">' +
-            '<td colspan="14" style="color:' + projectColor + ';">📁 ' + projectName + '（共 ' + projectData.length + ' 条）</td>' +
-            '</tr>';
+        function groupBySum(arr, key, sumKey) {
+            var map = {};
+            for (var i = 0; i < arr.length; i++) {
+                var v = arr[i][key] || '未分类';
+                v = String(v);
+                if (map[v] === undefined) map[v] = 0;
+                map[v] += (arr[i][sumKey] || 0);
+            }
+            var result = [];
+            for (var k in map) {
+                if (map.hasOwnProperty(k)) result.push([k, map[k]]);
+            }
+            result.sort(function(a, b) { return b[1] - a[1]; });
+            return result;
+        }
 
-        for (var ci = 0; ci < centerList.length; ci++) {
-            var center = centerList[ci];
-            var centerData = projectData.filter(function(d) { return d.matchedDept === center; });
-            if (centerData.length === 0) continue;
+        // ============================================================
+        // ★★★ 更新人员筛选下拉列表 ★★★
+        // ============================================================
+        function updateOwnerFilter(data) {
+            var filterSelect = document.getElementById('ownerFilter');
+            if (!filterSelect) return;
 
-            var profs = [];
-            var profSet = {};
-            for (var di = 0; di < centerData.length; di++) {
-                var profName = centerData[di].matchedProf || '其他专业';
-                if (!profSet[profName]) {
-                    profSet[profName] = true;
-                    profs.push(profName);
+            var currentValue = filterSelect.value;
+
+            var ownerMap = {};
+            for (var i = 0; i < data.length; i++) {
+                var d = data[i];
+                if (d.owner && d.owner !== '' && d.owner !== '未知') {
+                    var key = d.owner;
+                    if (!ownerMap[key]) {
+                        ownerMap[key] = {
+                            name: key,
+                            dept: d.matchedDept,
+                            isCenter: (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept ===
+                                '智能电子电气开发中心')
+                        };
+                    }
                 }
             }
-            profs.sort();
 
-            for (var pri = 0; pri < profs.length; pri++) {
-                var prof = profs[pri];
-                var profData = centerData.filter(function(d) { return d.matchedProf === prof; });
-                if (profData.length === 0) continue;
-
-                var count = profData.length;
-                var sw = 0, hw = 0, total = 0;
-                var s1 = 0, s2 = 0, s3 = 0, s4 = 0, a = 0, b = 0, c = 0;
-                for (var di2 = 0; di2 < profData.length; di2++) {
-                    var d = profData[di2];
-                    sw += d.swScore;
-                    hw += d.hwScore;
-                    total += d.totalScore;
-                    if (d.importance === 'S1') s1++;
-                    else if (d.importance === 'S2') s2++;
-                    else if (d.importance === 'S3') s3++;
-                    else if (d.importance === 'S4') s4++;
-                    else if (d.importance === 'A') a++;
-                    else if (d.importance === 'B') b++;
-                    else if (d.importance === 'C') c++;
+            var ownerList = [];
+            for (var k in ownerMap) {
+                if (ownerMap.hasOwnProperty(k)) {
+                    ownerList.push(ownerMap[k]);
                 }
-                totalCount += count;
+            }
 
-                var color = center === '智能驾驶与座舱开发中心' ? '#1d4ed8' : center === '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8';
-                var tagClass = proj === 'project1' ? 'project1' : proj === 'project2' ? 'project2' : 'project-other';
-                var rowClass = center === '其他中心' ? 'stats-other-center' : '';
+            ownerList.sort(function(a, b) {
+                if (a.isCenter && !b.isCenter) return -1;
+                if (!a.isCenter && b.isCenter) return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            var html = '<option value="">全部人员</option>';
+            for (var j = 0; j < ownerList.length; j++) {
+                var o = ownerList[j];
+                html += '<option value="' + o.name + '">' + o.name + '</option>';
+            }
+            filterSelect.innerHTML = html;
+
+            if (currentValue) {
+                filterSelect.value = currentValue;
+            }
+        }
+
+        // ============================================================
+        // ★★★ 应用人员筛选 ★★★
+        // ============================================================
+        function applyOwnerFilter() {
+            var filterSelect = document.getElementById('ownerFilter');
+            var centerSelect = document.getElementById('centerFilter');
+            if (!filterSelect || !centerSelect) return;
+
+            var ownerValue = filterSelect.value;
+            var centerValue = centerSelect.value;
+
+            renderTableWithFilter(currentData, ownerValue, centerValue);
+        }
+
+        // ============================================================
+        // ★★★ 带筛选的表格渲染 ★★★
+        // ============================================================
+        function renderTableWithFilter(data, ownerFilter, centerFilter) {
+            var tbody = document.getElementById('tableBody');
+            if (!tbody) return;
+
+            var sortedData = data.slice().sort(function(a, b) {
+                var aIsCenter = (a.matchedDept === '智能驾驶与座舱开发中心' || a.matchedDept ===
+                    '智能电子电气开发中心');
+                var bIsCenter = (b.matchedDept === '智能驾驶与座舱开发中心' || b.matchedDept ===
+                    '智能电子电气开发中心');
+                if (aIsCenter && !bIsCenter) return -1;
+                if (!aIsCenter && bIsCenter) return 1;
+                return a.id - b.id;
+            });
+
+            if (ownerFilter) {
+                sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
+            }
+            if (centerFilter) {
+                sortedData = sortedData.filter(function(d) { return d.matchedDept === centerFilter; });
+            }
+
+            document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
+
+            var display = sortedData.slice(0, 200);
+            var html = '';
+            for (var i = 0; i < display.length; i++) {
+                var d = display[i];
+                var isOpen = d.isOpen,
+                    isClosed = d.isClosed;
+                var rowClass = '';
+                var statusTag = '';
+                if (isOpen) { rowClass = 'filtered';
+                    statusTag = '<span class="tag filter-matched">🟡未关闭</span>'; } else if (isClosed) { rowClass =
+                        'closed';
+                    statusTag = '<span class="tag closed-tag">✅已关闭</span>'; } else { statusTag =
+                        '<span class="tag">-</span>'; }
+
+                var isCenter = (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept ===
+                    '智能电子电气开发中心');
+                if (isCenter) rowClass += ' center-priority';
+
+                var projectClass = d.projectId === 'project1' ? 'project1' : d.projectId === 'project2' ? 'project2' :
+                    'project-other';
+                var showScore = isOpen;
+                var color = d.matchedDept === '智能驾驶与座舱开发中心' ? '#1d4ed8' : d.matchedDept ===
+                    '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8';
+
+                var ownerDisplay = d.owner;
+                if (isCenter) {
+                    ownerDisplay = '⭐ ' + d.owner;
+                }
 
                 html += '<tr class="' + rowClass + '">' +
-                    '<td><span class="tag ' + tagClass + '">' + projectName + '</span></td>' +
-                    '<td style="color:' + color + ';font-weight:600;">' + center + '</td>' +
-                    '<td>' + prof + '</td>' +
-                    '<td><strong>' + count + '</strong></td>' +
-                    '<td class="score ' + (sw >= 5 ? 'high' : sw >= 1 ? 'medium' : 'low') + '">' + sw.toFixed(1) + '</td>' +
-                    '<td class="score ' + (hw >= 5 ? 'high' : hw >= 1 ? 'medium' : 'low') + '">' + hw.toFixed(1) + '</td>' +
-                    '<td class="score ' + (total >= 5 ? 'high' : total >= 1 ? 'medium' : 'low') + '"><strong>' + total.toFixed(1) + '</strong></td>' +
-                    '<td>' + s1 + '</td><td>' + s2 + '</td><td>' + s3 + '</td><td>' + s4 + '</td>' +
-                    '<td>' + a + '</td><td>' + b + '</td><td>' + c + '</td>' +
+                    '<td>' + d.id + '</td>' +
+                    '<td><span class="status-badge ' + d.mainStatus + '">' + d.mainStatus + '</span></td>' +
+                    '<td>' + statusTag + ' <span style="font-size:10px;color:#94a3b8;">' + d.improveStatus +
+                    '</span></td>' +
+                    '<td style="font-size:10px;">' + d.serialNo + '</td>' +
+                    '<td><span class="tag ' + projectClass + '">' + d.projectName + '</span></td>' +
+                    '<td><span class="importance ' + d.importance + '">' + d.importance + '</span></td>' +
+                    '<td style="font-size:11px;font-weight:600;' + (isCenter ? 'color:#1d4ed8;' : '') + '">' +
+                    ownerDisplay + '</td>' +
+                    '<td style="font-size:10px;color:' + color + ';">' + d.matchedDept + '</td>' +
+                    '<td style="font-size:10px;">' + d.matchedProf + '</td>' +
+                    '<td class="score ' + (showScore ? (d.swScore >= 5 ? 'high' : d.swScore >= 1 ? 'medium' :
+                        'low') : 'closed-score') + '">' + (showScore ? d.swScore : '-') + '</td>' +
+                    '<td class="score ' + (showScore ? (d.hwScore >= 5 ? 'high' : d.hwScore >= 1 ? 'medium' :
+                        'low') : 'closed-score') + '">' + (showScore ? d.hwScore : '-') + '</td>' +
+                    '<td class="score ' + (showScore ? (d.totalScore >= 5 ? 'high' : d.totalScore >= 1 ?
+                        'medium' : 'low') : 'closed-score') + '">' + (showScore ? d.totalScore.toFixed(1) :
+                        '-') + '</td>' +
+                    '<td style="max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px;" title="' +
+                    d.desc + '">' + d.desc + '</td>' +
+                    '<td style="font-size:10px;">' + d.date + '</td>' +
                     '</tr>';
             }
-        }
-    }
-
-    if (html === '') {
-        html = '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:20px;">暂无数据</td></tr>';
-    }
-    tbody.innerHTML = html;
-    document.getElementById('statsCount').textContent = '共 ' + totalCount + ' 条';
-}
-
-// ============================================================
-// ★★★ 目标差值图表（修复 Tooltip 显示和图表大小问题）★★★
-// ============================================================
-function renderTargetCharts(openData) {
-    var modules = displayConfig.modules || {};
-    if (modules.targetChart === false) return;
-
-    if (!appConfig || !appConfig.stageTarget) {
-        console.warn('⚠️ stageTarget 配置不存在');
-        return;
-    }
-
-    var projects = appConfig.projectConfig.projects || [];
-    var stages = appConfig.stageTarget.stages || {};
-    var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
-
-    var chartContainers = ['chartTarget1', 'chartTarget2'];
-    var containerIndex = 0;
-
-    for (var pi = 0; pi < projects.length; pi++) {
-        var proj = projects[pi];
-        var projectId = proj.id;
-        var projectName = proj.name;
-        var stageId = proj.stage || 'SG10';
-        var stage = stages[stageId];
-
-        if (containerIndex >= chartContainers.length) break;
-
-        var domId = chartContainers[containerIndex];
-        var dom = document.getElementById(domId);
-        if (!dom) {
-            console.warn('⚠️ 找不到图表容器:', domId);
-            containerIndex++;
-            continue;
+            if (sortedData.length > 200) {
+                html += '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:6px;font-size:11px;">... 仅显示前200条，共 ' +
+                    sortedData.length + ' 条</td></tr>';
+            }
+            tbody.innerHTML = html;
         }
 
-        // ★★★ 动态更新图表标题 ★★★
-        var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
-        if (titleEl) {
-            titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
-        }
+        // ============================================================
+        // ★★★ 渲染整体统计表格 ★★★
+        // ============================================================
+        function renderStatsTable(openData) {
+            var tbody = document.getElementById('statsBody');
+            if (!tbody) return;
 
-        // ★★★ 先调整容器尺寸，确保图表正常显示 ★★★
-        dom.style.width = '100%';
-        dom.style.height = '260px';
-
-        if (chartInstances[domId]) {
-            chartInstances[domId].dispose();
-            delete chartInstances[domId];
-        }
-
-        var chart = echarts.init(dom);
-        chartInstances[domId] = chart;
-
-        var projectData = openData.filter(function(d) { return d.projectId === projectId; });
-
-        // ★★★ 每个图表独立的数据变量 ★★★
-        var categories = [];
-        var actualValues = [];
-        var targetValues = [];
-        var greenParts = [];
-        var redParts = [];
-
-        if (!stage) {
-            chart.setOption({
-                title: {
-                    text: '未配置阶段目标 (阶段: ' + stageId + ')',
-                    left: 'center',
-                    top: 'center',
-                    textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+            var projectConfig = appConfig ? appConfig.projectConfig : null;
+            var projectIds = [];
+            var projectNames = {};
+            if (projectConfig && projectConfig.projects) {
+                for (var i = 0; i < projectConfig.projects.length; i++) {
+                    var p = projectConfig.projects[i];
+                    projectIds.push(p.id);
+                    projectNames[p.id] = p.name;
                 }
-            });
-            containerIndex++;
-            continue;
-        }
+            }
+            projectIds.push('other');
+            projectNames['other'] = '其他项目';
 
-        if (projectData.length === 0) {
-            chart.setOption({
-                title: {
-                    text: '暂无数据',
-                    left: 'center',
-                    top: 'center',
-                    textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+            var centerMap = {};
+            for (var i = 0; i < openData.length; i++) {
+                var d = openData[i];
+                var center = d.matchedDept || '其他中心';
+                var prof = d.matchedProf || '其他专业';
+                if (!centerMap[center]) {
+                    centerMap[center] = {};
                 }
-            });
-            containerIndex++;
-            continue;
-        }
+                if (!centerMap[center][prof]) {
+                    centerMap[center][prof] = 0;
+                }
+                centerMap[center][prof]++;
+            }
 
-        for (var ci = 0; ci < centerNames.length; ci++) {
-            var cName = centerNames[ci];
-            var cConfig = stage.centers[cName];
-            if (!cConfig) continue;
-
-            var profs = cConfig.professions || {};
-            var target = cConfig.target || 0;
-            var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
-
-            var profActuals = {};
-            for (var profName in profs) {
-                if (profs.hasOwnProperty(profName)) {
-                    var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
-                    var profActual = 0;
-                    for (var di = 0; di < profData.length; di++) {
-                        profActual += profData[di].swScore;
+            var centerList = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+            var otherCenters = [];
+            for (var c in centerMap) {
+                if (centerMap.hasOwnProperty(c)) {
+                    if (centerList.indexOf(c) === -1) {
+                        otherCenters.push(c);
                     }
-                    profActuals[profName] = profActual;
+                }
+            }
+            otherCenters.sort();
+            centerList = centerList.concat(otherCenters);
+
+            var totalCount = 0;
+            var html = '';
+
+            for (var pi = 0; pi < projectIds.length; pi++) {
+                var proj = projectIds[pi];
+                var projectName = projectNames[proj] || proj;
+                var projectData = openData.filter(function(d) { return d.projectId === proj; });
+
+                if (projectData.length === 0) continue;
+
+                var projectColor = proj === 'project1' ? '#1d4ed8' : proj === 'project2' ? '#7c3aed' : '#64748b';
+                html += '<tr class="stats-group-header">' +
+                    '<td colspan="14" style="color:' + projectColor + ';">📁 ' + projectName + '（共 ' + projectData
+                    .length + ' 条）</td>' +
+                    '</tr>';
+
+                for (var ci = 0; ci < centerList.length; ci++) {
+                    var center = centerList[ci];
+                    var centerData = projectData.filter(function(d) { return d.matchedDept === center; });
+                    if (centerData.length === 0) continue;
+
+                    var profs = [];
+                    var profSet = {};
+                    for (var di = 0; di < centerData.length; di++) {
+                        var profName = centerData[di].matchedProf || '其他专业';
+                        if (!profSet[profName]) {
+                            profSet[profName] = true;
+                            profs.push(profName);
+                        }
+                    }
+                    profs.sort();
+
+                    for (var pri = 0; pri < profs.length; pri++) {
+                        var prof = profs[pri];
+                        var profData = centerData.filter(function(d) { return d.matchedProf === prof; });
+                        if (profData.length === 0) continue;
+
+                        var count = profData.length;
+                        var sw = 0,
+                            hw = 0,
+                            total = 0;
+                        var s1 = 0,
+                            s2 = 0,
+                            s3 = 0,
+                            s4 = 0,
+                            a = 0,
+                            b = 0,
+                            c = 0;
+                        for (var di2 = 0; di2 < profData.length; di2++) {
+                            var d = profData[di2];
+                            sw += d.swScore;
+                            hw += d.hwScore;
+                            total += d.totalScore;
+                            if (d.importance === 'S1') s1++;
+                            else if (d.importance === 'S2') s2++;
+                            else if (d.importance === 'S3') s3++;
+                            else if (d.importance === 'S4') s4++;
+                            else if (d.importance === 'A') a++;
+                            else if (d.importance === 'B') b++;
+                            else if (d.importance === 'C') c++;
+                        }
+                        totalCount += count;
+
+                        var color = center === '智能驾驶与座舱开发中心' ? '#1d4ed8' : center ===
+                            '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8';
+                        var tagClass = proj === 'project1' ? 'project1' : proj === 'project2' ? 'project2' :
+                            'project-other';
+                        var rowClass = center === '其他中心' ? 'stats-other-center' : '';
+
+                        html += '<tr class="' + rowClass + '">' +
+                            '<td><span class="tag ' + tagClass + '">' + projectName + '</span></td>' +
+                            '<td style="color:' + color + ';font-weight:600;">' + center + '</td>' +
+                            '<td>' + prof + '</td>' +
+                            '<td><strong>' + count + '</strong></td>' +
+                            '<td class="score ' + (sw >= 5 ? 'high' : sw >= 1 ? 'medium' : 'low') + '">' + sw
+                            .toFixed(1) + '</td>' +
+                            '<td class="score ' + (hw >= 5 ? 'high' : hw >= 1 ? 'medium' : 'low') + '">' + hw
+                            .toFixed(1) + '</td>' +
+                            '<td class="score ' + (total >= 5 ? 'high' : total >= 1 ? 'medium' : 'low') +
+                            '"><strong>' + total.toFixed(1) + '</strong></td>' +
+                            '<td>' + s1 + '</td><td>' + s2 + '</td><td>' + s3 + '</td><td>' + s4 + '</td>' +
+                            '<td>' + a + '</td><td>' + b + '</td><td>' + c + '</td>' +
+                            '</tr>';
+                    }
                 }
             }
 
-            for (var profName2 in profs) {
-                if (profs.hasOwnProperty(profName2)) {
-                    var ratio = profs[profName2] || 0;
-                    var profTarget = target * ratio;
-                    var profActual2 = profActuals[profName2] || 0;
-                    var shortName = cName.replace('智能驾驶与座舱开发中心', '座舱').replace('智能电子电气开发中心', '电子电气');
-                    var displayName = shortName + '-' + profName2;
-                    categories.push(displayName);
-                    actualValues.push(Math.round(profActual2 * 10) / 10);
-                    targetValues.push(Math.round(profTarget * 10) / 10);
+            if (html === '') {
+                html = '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:20px;">暂无数据</td></tr>';
+            }
+            tbody.innerHTML = html;
+            document.getElementById('statsCount').textContent = '共 ' + totalCount + ' 条';
+        }
 
-                    var green = Math.min(profActual2, profTarget);
-                    var red = Math.max(0, profActual2 - profTarget);
-                    greenParts.push(Math.round(green * 10) / 10);
-                    redParts.push(Math.round(red * 10) / 10);
+        // ============================================================
+        // ★★★ 目标差值图表（修复 Tooltip 和尺寸问题）★★★
+        // ============================================================
+        function renderTargetCharts(openData) {
+            var modules = displayConfig.modules || {};
+            if (modules.targetChart === false) return;
+
+            if (!appConfig || !appConfig.stageTarget) {
+                console.warn('⚠️ stageTarget 配置不存在');
+                return;
+            }
+
+            var projects = appConfig.projectConfig.projects || [];
+            var stages = appConfig.stageTarget.stages || {};
+            var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+
+            var chartContainers = ['chartTarget1', 'chartTarget2'];
+            var containerIndex = 0;
+
+            for (var pi = 0; pi < projects.length; pi++) {
+                var proj = projects[pi];
+                var projectId = proj.id;
+                var projectName = proj.name;
+                var stageId = proj.stage || 'SG10';
+                var stage = stages[stageId];
+
+                if (containerIndex >= chartContainers.length) break;
+
+                var domId = chartContainers[containerIndex];
+                var dom = document.getElementById(domId);
+                if (!dom) {
+                    console.warn('⚠️ 找不到图表容器:', domId);
+                    containerIndex++;
+                    continue;
                 }
+
+                // ★★★ 动态更新图表标题 ★★★
+                var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
+                if (titleEl) {
+                    titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
+                }
+
+                // ★★★ 确保容器尺寸正确 ★★★
+                dom.style.width = '100%';
+                dom.style.height = '260px';
+
+                // ★★★ 先 resize 父容器确保布局完成 ★★★
+                var parentCard = dom.closest('.chart-card');
+                if (parentCard) {
+                    parentCard.style.display = 'block';
+                }
+
+                if (chartInstances[domId]) {
+                    chartInstances[domId].dispose();
+                    delete chartInstances[domId];
+                }
+
+                var chart = echarts.init(dom);
+                chartInstances[domId] = chart;
+
+                var projectData = openData.filter(function(d) { return d.projectId === projectId; });
+
+                // ★★★ 每个图表独立的数据变量 ★★★
+                var categories = [];
+                var actualValues = [];
+                var targetValues = [];
+                var greenParts = [];
+                var redParts = [];
+
+                if (!stage) {
+                    chart.setOption({
+                        title: {
+                            text: '未配置阶段目标 (阶段: ' + stageId + ')',
+                            left: 'center',
+                            top: 'center',
+                            textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                        }
+                    });
+                    containerIndex++;
+                    continue;
+                }
+
+                if (projectData.length === 0) {
+                    chart.setOption({
+                        title: {
+                            text: '暂无数据',
+                            left: 'center',
+                            top: 'center',
+                            textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                        }
+                    });
+                    containerIndex++;
+                    continue;
+                }
+
+                for (var ci = 0; ci < centerNames.length; ci++) {
+                    var cName = centerNames[ci];
+                    var cConfig = stage.centers[cName];
+                    if (!cConfig) continue;
+
+                    var profs = cConfig.professions || {};
+                    var target = cConfig.target || 0;
+                    var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
+
+                    var profActuals = {};
+                    for (var profName in profs) {
+                        if (profs.hasOwnProperty(profName)) {
+                            var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
+                            var profActual = 0;
+                            for (var di = 0; di < profData.length; di++) {
+                                profActual += profData[di].swScore;
+                            }
+                            profActuals[profName] = profActual;
+                        }
+                    }
+
+                    for (var profName2 in profs) {
+                        if (profs.hasOwnProperty(profName2)) {
+                            var ratio = profs[profName2] || 0;
+                            var profTarget = target * ratio;
+                            var profActual2 = profActuals[profName2] || 0;
+                            var shortName = cName.replace('智能驾驶与座舱开发中心', '座舱').replace(
+                                '智能电子电气开发中心', '电子电气');
+                            var displayName = shortName + '-' + profName2;
+                            categories.push(displayName);
+                            actualValues.push(Math.round(profActual2 * 10) / 10);
+                            targetValues.push(Math.round(profTarget * 10) / 10);
+
+                            var green = Math.min(profActual2, profTarget);
+                            var red = Math.max(0, profActual2 - profTarget);
+                            greenParts.push(Math.round(green * 10) / 10);
+                            redParts.push(Math.round(red * 10) / 10);
+                        }
+                    }
+                }
+
+                if (categories.length === 0) {
+                    chart.setOption({
+                        title: {
+                            text: '暂无专业数据',
+                            left: 'center',
+                            top: 'center',
+                            textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                        }
+                    });
+                    containerIndex++;
+                    continue;
+                }
+
+                // ★★★ 关键修复：为当前图表创建独立的数据副本 ★★★
+                // 每个图表拥有自己的数据副本，不会被后续循环覆盖
+                var chartData = {
+                    categories: categories.slice(),
+                    actualValues: actualValues.slice(),
+                    targetValues: targetValues.slice(),
+                    greenParts: greenParts.slice(),
+                    redParts: redParts.slice()
+                };
+
+                chart.setOption({
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'shadow' },
+                        formatter: function(params) {
+                            // ★★★ 使用当前图表独立的数据副本 ★★★
+                            var cats = chartData.categories;
+                            var actuals = chartData.actualValues;
+                            var targets = chartData.targetValues;
+
+                            var idx = 0;
+                            for (var p = 0; p < params.length; p++) {
+                                if (params[p].dataIndex !== undefined) {
+                                    idx = params[p].dataIndex;
+                                    break;
+                                }
+                            }
+                            var name = cats[idx] || '';
+                            var actual = actuals[idx] || 0;
+                            var target = targets[idx] || 0;
+                            var diff = actual - target;
+                            var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
+                            var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
+                            var color = diff <= 0 ? '#10b981' : '#ef4444';
+                            return '<strong>' + name + '</strong><br/>' +
+                                '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
+                                '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
+                                '差值: <strong style="color:' + color + ';">' + diffDisplay +
+                                '</strong><br/>' +
+                                '状态: ' + status;
+                        }
+                    },
+                    legend: {
+                        data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
+                        bottom: 0,
+                        icon: 'roundRect',
+                        itemWidth: 12,
+                        itemHeight: 8,
+                        fontSize: 10
+                    },
+                    grid: {
+                        left: '6%',
+                        right: '8%',
+                        top: '8%',
+                        bottom: '22%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: categories,
+                        axisLabel: {
+                            rotate: 30,
+                            fontSize: 8,
+                            interval: 0,
+                            width: 70,
+                            overflow: 'break'
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '分值',
+                        splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                        min: 0
+                    },
+                    series: [{
+                        name: '✅ 达标部分 (≤目标)',
+                        type: 'bar',
+                        stack: 'total',
+                        data: greenParts,
+                        barWidth: '40%',
+                        itemStyle: {
+                            borderRadius: [3, 3, 0, 0],
+                            color: '#10b981'
+                        },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            fontSize: 8,
+                            fontWeight: 600,
+                            color: 'white',
+                            formatter: function(params) {
+                                return params.value > 0 ? params.value.toFixed(1) : '';
+                            }
+                        }
+                    }, {
+                        name: '❌ 超标部分 (>目标)',
+                        type: 'bar',
+                        stack: 'total',
+                        data: redParts,
+                        barWidth: '40%',
+                        itemStyle: {
+                            borderRadius: [3, 3, 0, 0],
+                            color: '#ef4444'
+                        },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            fontSize: 8,
+                            fontWeight: 600,
+                            color: 'white',
+                            formatter: function(params) {
+                                return params.value > 0 ? '+' + params.value.toFixed(1) : '';
+                            }
+                        }
+                    }, {
+                        name: '目标值',
+                        type: 'bar',
+                        data: targetValues,
+                        barWidth: '40%',
+                        itemStyle: {
+                            borderRadius: [3, 3, 0, 0],
+                            color: '#94a3b8',
+                            opacity: 0.3
+                        },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            fontSize: 7,
+                            fontWeight: 600,
+                            color: '#64748b',
+                            formatter: function(params) {
+                                return '🎯 ' + params.value.toFixed(1);
+                            }
+                        }
+                    }]
+                });
+
+                // ★★★ 关键修复：延迟执行 resize 确保图表尺寸正确 ★★★
+                setTimeout(function() {
+                    if (chart && !chart.isDisposed()) {
+                        chart.resize();
+                    }
+                }, 200);
+
+                // 窗口 resize 事件
+                var resizeHandler = function() {
+                    if (chart && !chart.isDisposed()) {
+                        chart.resize();
+                    }
+                };
+                // 移除旧的监听避免重复
+                if (chart._resizeHandler) {
+                    window.removeEventListener('resize', chart._resizeHandler);
+                }
+                window.addEventListener('resize', resizeHandler);
+                chart._resizeHandler = resizeHandler;
+
+                containerIndex++;
             }
         }
 
-        if (categories.length === 0) {
-            chart.setOption({
-                title: {
-                    text: '暂无专业数据',
-                    left: 'center',
-                    top: 'center',
-                    textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+        // ============================================================
+        // 渲染主函数
+        // ============================================================
+        function renderAll(data) {
+            if (!data || data.length === 0) {
+                safeSetHTML('kpiGrid',
+                    '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#94a3b8;">暂无数据</div>');
+                return;
+            }
+
+            var openData = data.filter(function(d) { return d.isOpen; });
+            var closedData = data.filter(function(d) { return d.isClosed; });
+            var trackedData = data.filter(function(d) { return d.isTracked; });
+
+            var openCount = openData.length,
+                closedCount = closedData.length,
+                trackedCount = trackedData.length;
+
+            safeSetText('openCount', openCount);
+            safeSetText('closedCount', closedCount);
+
+            var projectConfig = appConfig ? appConfig.projectConfig : null;
+            var projectIds = [];
+            var projectLabels = {};
+            if (projectConfig && projectConfig.projects) {
+                for (var i = 0; i < projectConfig.projects.length; i++) {
+                    var p = projectConfig.projects[i];
+                    projectIds.push(p.id);
+                    projectLabels[p.id] = p.name;
                 }
-            });
-            containerIndex++;
-            continue;
+            }
+            projectIds.push('other');
+            projectLabels['other'] = '其他';
+
+            var projectBadges = ['project1Badge', 'project2Badge', 'projectOtherBadge'];
+            for (var bi = 0; bi < projectIds.length && bi < projectBadges.length; bi++) {
+                var pid = projectIds[bi];
+                var pData = openData.filter(function(d) { return d.projectId === pid; });
+                var label = projectLabels[pid] || pid;
+                safeSetText(projectBadges[bi], label + ': ' + pData.length);
+            }
+
+            var center1Name = "智能驾驶与座舱开发中心",
+                center2Name = "智能电子电气开发中心",
+                centerOther = "其他中心";
+            var center1Data = openData.filter(function(d) { return d.matchedDept === center1Name; });
+            var center2Data = openData.filter(function(d) { return d.matchedDept === center2Name; });
+            var centerOtherData = openData.filter(function(d) { return d.matchedDept === centerOther; });
+
+            var c1Sw = 0,
+                c1Hw = 0,
+                c1Total = 0;
+            for (var i = 0; i < center1Data.length; i++) {
+                c1Sw += center1Data[i].swScore;
+                c1Hw += center1Data[i].hwScore;
+                c1Total += center1Data[i].totalScore;
+            }
+            var c2Sw = 0,
+                c2Hw = 0,
+                c2Total = 0;
+            for (var j = 0; j < center2Data.length; j++) {
+                c2Sw += center2Data[j].swScore;
+                c2Hw += center2Data[j].hwScore;
+                c2Total += center2Data[j].totalScore;
+            }
+            var otherSw = 0,
+                otherHw = 0,
+                otherTotal = 0;
+            for (var k = 0; k < centerOtherData.length; k++) {
+                otherSw += centerOtherData[k].swScore;
+                otherHw += centerOtherData[k].hwScore;
+                otherTotal += centerOtherData[k].totalScore;
+            }
+
+            var totalSw = 0,
+                totalHw = 0,
+                totalScore = 0;
+            for (var m = 0; m < openData.length; m++) {
+                totalSw += openData[m].swScore;
+                totalHw += openData[m].hwScore;
+                totalScore += openData[m].totalScore;
+            }
+            var avgScore = openCount > 0 ? (totalScore / openCount).toFixed(2) : '0';
+
+            safeSetHTML('kpiGrid',
+                '<div class="kpi-card" style="border-left:4px solid #f97316;"><div class="label">📊 总问题数 (1/5~5/5)</div><div class="value">' +
+                trackedCount +
+                '</div><div class="sub">🟡未关闭 ' + openCount + ' · ✅已关闭 ' + closedCount + '</div></div>' +
+                '<div class="kpi-card" style="border-left:4px solid #f59e0b;"><div class="label">🟡 未关闭 (1/5~4/5)</div><div class="value">' +
+                openCount +
+                '</div><div class="sub">软件 <span class="tag-soft">' + totalSw.toFixed(1) +
+                '</span> · 硬件 <span class="tag-hard">' + totalHw.toFixed(1) +
+                '</span> · 总分 <span class="tag-total">' + totalScore.toFixed(1) + '</span></div></div>' +
+                '<div class="kpi-card" style="border-left:4px solid #10b981;"><div class="label">✅ 已关闭 (5/5)</div><div class="value">' +
+                closedCount +
+                '</div><div class="sub">不计分 · 占比 ' + (trackedCount > 0 ? Math.round(closedCount / trackedCount *
+                    100) : 0) + '%</div></div>' +
+                '<div class="kpi-card" style="border-left:4px solid #3b82f6;"><div class="label"><span class="dept-tag">' +
+                center1Name.substring(0, 8) + '</span></div><div class="value">' + center1Data.length +
+                '</div><div class="sub">软件 <span class="tag-soft">' + c1Sw.toFixed(1) +
+                '</span> · 硬件 <span class="tag-hard">' + c1Hw.toFixed(1) +
+                '</span> · 总分 <span class="tag-total">' + c1Total.toFixed(1) + '</span></div></div>' +
+                '<div class="kpi-card" style="border-left:4px solid #8b5cf6;"><div class="label"><span class="dept-tag purple">' +
+                center2Name.substring(0, 8) + '</span></div><div class="value">' + center2Data.length +
+                '</div><div class="sub">软件 <span class="tag-soft">' + c2Sw.toFixed(1) +
+                '</span> · 硬件 <span class="tag-hard">' + c2Hw.toFixed(1) +
+                '</span> · 总分 <span class="tag-total">' + c2Total.toFixed(1) + '</span></div></div>' +
+                '<div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">' +
+                centerOther + '</span></div><div class="value">' + centerOtherData.length +
+                '</div><div class="sub">软件 <span class="tag-soft">' + otherSw.toFixed(1) +
+                '</span> · 硬件 <span class="tag-hard">' + otherHw.toFixed(1) +
+                '</span> · 总分 <span class="tag-total">' + otherTotal.toFixed(1) + '</span></div></div>' +
+                '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(
+                    1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
+            );
+
+            renderStatsTable(openData);
+            renderTargetCharts(openData);
+
+            var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
+            updateOwnerFilter(allData);
+
+            var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
+            var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
+            renderTableWithFilter(data, ownerFilter, centerFilter);
+
+            renderCharts(openData);
         }
 
-        // ★★★ 关键修复：为当前图表创建独立的数据副本，避免被后续循环覆盖 ★★★
-        var chartData = {
-            categories: categories.slice(),
-            actualValues: actualValues.slice(),
-            targetValues: targetValues.slice(),
-            greenParts: greenParts.slice(),
-            redParts: redParts.slice()
-        };
+        // ============================================================
+        // 图表渲染
+        // ============================================================
+        function renderCharts(openData) {
+            var statusSW = groupBySum(openData, 'mainStatus', 'swScore');
+            renderScoreBarChart('chartStatusSW', statusSW, '软件分', '#3b82f6');
+            var statusHW = groupBySum(openData, 'mainStatus', 'hwScore');
+            renderScoreBarChart('chartStatusHW', statusHW, '硬件分', '#10b981');
+            var impSW = groupBySum(openData, 'importance', 'swScore');
+            renderScoreBarChart('chartImportanceSW', impSW, '软件分', '#3b82f6');
+            var impHW = groupBySum(openData, 'importance', 'hwScore');
+            renderScoreBarChart('chartImportanceHW', impHW, '硬件分', '#10b981');
+            var deptData = groupBy(openData, 'matchedDept');
+            renderBarChart('chartDept', deptData, '#8b5cf6');
+            renderProjectCenterChart(openData);
+            renderGanttChart(openData);
+            var topData = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
+            var topChartData = [];
+            for (var i = 0; i < topData.length; i++) {
+                var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
+                topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
+            }
+            renderScoreChart('chartScore', topChartData);
+            var sourceData = groupBy(openData, 'matchedProf');
+            renderBarChart('chartSource', sourceData, '#06b6d4');
+        }
 
-        chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                formatter: function(params) {
-                    // ★★★ 使用当前图表独立的数据副本 ★★★
-                    var cats = chartData.categories;
-                    var actuals = chartData.actualValues;
-                    var targets = chartData.targetValues;
-
-                    var idx = 0;
-                    for (var p = 0; p < params.length; p++) {
-                        if (params[p].dataIndex !== undefined) {
-                            idx = params[p].dataIndex;
-                            break;
-                        }
-                    }
-                    var name = cats[idx] || '';
-                    var actual = actuals[idx] || 0;
-                    var target = targets[idx] || 0;
-                    var diff = actual - target;
-                    var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
-                    var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
-                    var color = diff <= 0 ? '#10b981' : '#ef4444';
-                    return '<strong>' + name + '</strong><br/>' +
-                           '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
-                           '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
-                           '差值: <strong style="color:' + color + ';">' + diffDisplay + '</strong><br/>' +
-                           '状态: ' + status;
-                }
-            },
-            legend: {
-                data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
-                bottom: 0,
-                icon: 'roundRect',
-                itemWidth: 12,
-                itemHeight: 8,
-                fontSize: 10
-            },
-            grid: {
-                left: '6%',
-                right: '8%',
-                top: '8%',
-                bottom: '22%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                data: categories,
-                axisLabel: {
-                    rotate: 30,
-                    fontSize: 8,
-                    interval: 0,
-                    width: 70,
-                    overflow: 'break'
-                }
-            },
-            yAxis: {
-                type: 'value',
-                name: '分值',
-                splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                min: 0
-            },
-            series: [
-                {
-                    name: '✅ 达标部分 (≤目标)',
-                    type: 'bar',
-                    stack: 'total',
-                    data: greenParts,
-                    barWidth: '40%',
-                    itemStyle: {
-                        borderRadius: [3, 3, 0, 0],
-                        color: '#10b981'
-                    },
-                    label: {
-                        show: true,
-                        position: 'inside',
-                        fontSize: 8,
-                        fontWeight: 600,
-                        color: 'white',
-                        formatter: function(params) {
-                            return params.value > 0 ? params.value.toFixed(1) : '';
-                        }
+        // ============================================================
+        // 图表渲染函数
+        // ============================================================
+        function renderScoreBarChart(domId, data, label, color) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var categories = [],
+                values = [];
+            var total = 0;
+            for (var i = 0; i < data.length; i++) {
+                categories.push(data[i][0]);
+                values.push(data[i][1]);
+                total += data[i][1];
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0];
+                        var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
+                        return '<strong>' + p.name + '</strong><br/>' + label + ': ' + p.value.toFixed(1) +
+                            ' (' + pct + '%)';
                     }
                 },
-                {
-                    name: '❌ 超标部分 (>目标)',
+                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9,
+                        interval: 0 } },
+                yAxis: { type: 'value', name: label, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    data: values,
                     type: 'bar',
-                    stack: 'total',
-                    data: redParts,
                     barWidth: '40%',
-                    itemStyle: {
-                        borderRadius: [3, 3, 0, 0],
-                        color: '#ef4444'
-                    },
-                    label: {
-                        show: true,
-                        position: 'inside',
-                        fontSize: 8,
-                        fontWeight: 600,
-                        color: 'white',
-                        formatter: function(params) {
-                            return params.value > 0 ? '+' + params.value.toFixed(1) : '';
+                    itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
+                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 600,
+                        color: '#334155', formatter: function(p) { return p.value.toFixed(1); } }
+                }]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        function renderProjectCenterChart(openData) {
+            var dom = document.getElementById('chartProjectCompare');
+            if (!dom) return;
+            if (chartInstances['chartProjectCompare']) { chartInstances['chartProjectCompare'].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances['chartProjectCompare'] = chart;
+            var center1 = "智能驾驶与座舱开发中心",
+                center2 = "智能电子电气开发中心",
+                centerOther = "其他中心";
+
+            var projectConfig = appConfig ? appConfig.projectConfig : null;
+            var projectIds = [];
+            var projectNames = [];
+            if (projectConfig && projectConfig.projects) {
+                for (var i = 0; i < projectConfig.projects.length; i++) {
+                    var p = projectConfig.projects[i];
+                    projectIds.push(p.id);
+                    projectNames.push(p.name);
+                }
+            }
+            projectIds.push('other');
+            projectNames.push('其他项目');
+
+            var c1Sw = [],
+                c1Hw = [],
+                c2Sw = [],
+                c2Hw = [],
+                cOtherSw = [],
+                cOtherHw = [];
+            for (var pi = 0; pi < projectIds.length; pi++) {
+                var pid = projectIds[pi];
+                var d1 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center1; });
+                var d2 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center2; });
+                var dOther = openData.filter(function(d) { return d.projectId === pid && d.matchedDept ===
+                        centerOther; });
+                var s1 = 0,
+                    h1 = 0,
+                    s2 = 0,
+                    h2 = 0,
+                    sOther = 0,
+                    hOther = 0;
+                for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore;
+                    h1 += d1[j].hwScore; }
+                for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore;
+                    h2 += d2[k].hwScore; }
+                for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore;
+                    hOther += dOther[l].hwScore; }
+                c1Sw.push(s1);
+                c1Hw.push(h1);
+                c2Sw.push(s2);
+                c2Hw.push(h2);
+                cOtherSw.push(sOther);
+                cOtherHw.push(hOther);
+            }
+
+            var short1 = center1.substring(0, 6);
+            var short2 = center2.substring(0, 6);
+
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var html = '<strong>' + params[0].name + '</strong><br/>';
+                        for (var i = 0; i < params.length; i++) {
+                            html += params[i].marker + ' ' + params[i].seriesName + ': ' + params[i].value
+                                .toFixed(1) + ' 分<br/>';
                         }
+                        return html;
                     }
                 },
-                {
-                    name: '目标值',
+                legend: {
+                    data: [short1 + '软件', short1 + '硬件', short2 + '软件', short2 + '硬件', '其他中心软件',
+                        '其他中心硬件'
+                    ],
+                    bottom: 0,
+                    icon: 'roundRect',
+                    itemWidth: 10,
+                    itemHeight: 8,
+                    fontSize: 8
+                },
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '28%' },
+                xAxis: { type: 'category', data: projectNames },
+                yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [
+                    { name: short1 + '软件', type: 'bar', data: c1Sw, barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: short1 + '硬件', type: 'bar', data: c1Hw, barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: short2 + '软件', type: 'bar', data: c2Sw, barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: short2 + '硬件', type: 'bar', data: c2Hw, barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: '其他中心软件', type: 'bar', data: cOtherSw, barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#94a3b8' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: '其他中心硬件', type: 'bar', data: cOtherHw, barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#cbd5e1' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } }
+                ]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        function renderGanttChart(data) {
+            var dom = document.getElementById('chartGantt');
+            if (!dom) return;
+            if (chartInstances['chartGantt']) { chartInstances['chartGantt'].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances['chartGantt'] = chart;
+            var sorted = data.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 30);
+            var names = [],
+                swData = [],
+                hwData = [];
+            for (var i = 0; i < sorted.length; i++) {
+                var d = sorted[i];
+                names.push('#' + d.id + ' ' + d.owner.substring(0, 4));
+                swData.push(d.swScore);
+                hwData.push(d.hwScore);
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var idx = params[0].dataIndex;
+                        var d = sorted[idx];
+                        return '<strong>#' + d.id + ' - ' + d.owner + '</strong><br/>中心: ' + d
+                            .matchedDept + '<br/>专业: ' + d.matchedProf + '<br/>改善: ' + d
+                            .improveStatus + '<br/>软件: ' + d.swScore + ' · 硬件: ' + d.hwScore +
+                            '<br/><strong>总分: ' + d.totalScore.toFixed(1) + '</strong>';
+                    }
+                },
+                legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10,
+                    itemHeight: 8 },
+                grid: { left: '3%', right: '6%', top: '6%', bottom: '18%', containLabel: true },
+                xAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                yAxis: { type: 'category', data: names, axisLabel: { fontSize: 8, interval: 0 } },
+                series: [
+                    { name: '软件分', type: 'bar', stack: 'total', data: swData, barWidth: '50%',
+                        itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] },
+                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
+                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } },
+                    { name: '硬件分', type: 'bar', stack: 'total', data: hwData, barWidth: '50%',
+                        itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] },
+                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
+                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } }
+                ]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        function renderBarChart(domId, data, color) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var categories = [],
+                values = [];
+            var total = 0;
+            for (var i = 0; i < data.length; i++) {
+                categories.push(data[i][0]);
+                values.push(data[i][1]);
+                total += data[i][1];
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0];
+                        var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
+                        return '<strong>' + p.name + '</strong><br/>数量: ' + p.value + ' (' + pct +
+                            '%)';
+                    }
+                },
+                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9,
+                        interval: 0 } },
+                yAxis: { type: 'value', name: '数量', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    data: values,
                     type: 'bar',
-                    data: targetValues,
+                    barWidth: '40%',
+                    itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
+                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 600,
+                        color: '#334155' }
+                }]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        function renderScoreChart(domId, data) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var categories = [],
+                values = [];
+            for (var i = 0; i < data.length; i++) {
+                categories.push(data[i][0]);
+                values.push(data[i][1]);
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0];
+                        return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value + ' 分';
+                    }
+                },
+                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 15, fontSize: 8,
+                        interval: 0 } },
+                yAxis: { type: 'value', name: '总分', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    data: values,
+                    type: 'bar',
                     barWidth: '40%',
                     itemStyle: {
-                        borderRadius: [3, 3, 0, 0],
-                        color: '#94a3b8',
-                        opacity: 0.3
-                    },
-                    label: {
-                        show: true,
-                        position: 'top',
-                        fontSize: 7,
-                        fontWeight: 600,
-                        color: '#64748b',
-                        formatter: function(params) {
-                            return '🎯 ' + params.value.toFixed(1);
+                        borderRadius: [4, 4, 0, 0],
+                        color: function(params) {
+                            var v = params.value;
+                            if (v >= 5) return '#dc2626';
+                            if (v >= 1) return '#f59e0b';
+                            return '#3b82f6';
                         }
-                    }
-                }
-            ]
+                    },
+                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 700,
+                        color: '#334155' }
+                }]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        // ============================================================
+        // ★★★ 页面启动 ★★★
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllConfigs();
+
+            setTimeout(function() {
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('contentArea').classList.remove('hidden');
+                document.getElementById('contentArea').style.display = 'block';
+                console.log('✅ 页面加载完成');
+            }, 500);
         });
-
-        // ★★★ 图表渲染完成后调用 resize 确保正确尺寸 ★★★
-        setTimeout(function() {
-            if (chart && !chart.isDisposed()) {
-                chart.resize();
-            }
-        }, 100);
-
-        var resizeHandler = function() {
-            if (chart && !chart.isDisposed()) {
-                chart.resize();
-            }
-        };
-        window.removeEventListener('resize', resizeHandler);
-        window.addEventListener('resize', resizeHandler);
-        chart._resizeHandler = resizeHandler;
-
-        containerIndex++;
-    }
-}
-
-// ============================================================
-// 渲染主函数
-// ============================================================
-function renderAll(data) {
-    if (!data || data.length === 0) {
-        safeSetHTML('kpiGrid', '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#94a3b8;">暂无数据</div>');
-        return;
-    }
-
-    var openData = data.filter(function(d) { return d.isOpen; });
-    var closedData = data.filter(function(d) { return d.isClosed; });
-    var trackedData = data.filter(function(d) { return d.isTracked; });
-
-    var openCount = openData.length, closedCount = closedData.length, trackedCount = trackedData.length;
-
-    safeSetText('openCount', openCount);
-    safeSetText('closedCount', closedCount);
-
-    var projectConfig = appConfig ? appConfig.projectConfig : null;
-    var projectIds = [];
-    var projectLabels = {};
-    if (projectConfig && projectConfig.projects) {
-        for (var i = 0; i < projectConfig.projects.length; i++) {
-            var p = projectConfig.projects[i];
-            projectIds.push(p.id);
-            projectLabels[p.id] = p.name;
-        }
-    }
-    projectIds.push('other');
-    projectLabels['other'] = '其他';
-
-    var projectBadges = ['project1Badge', 'project2Badge', 'projectOtherBadge'];
-    for (var bi = 0; bi < projectIds.length && bi < projectBadges.length; bi++) {
-        var pid = projectIds[bi];
-        var pData = openData.filter(function(d) { return d.projectId === pid; });
-        var label = projectLabels[pid] || pid;
-        safeSetText(projectBadges[bi], label + ': ' + pData.length);
-    }
-
-    var center1Name = "智能驾驶与座舱开发中心", center2Name = "智能电子电气开发中心", centerOther = "其他中心";
-    var center1Data = openData.filter(function(d) { return d.matchedDept === center1Name; });
-    var center2Data = openData.filter(function(d) { return d.matchedDept === center2Name; });
-    var centerOtherData = openData.filter(function(d) { return d.matchedDept === centerOther; });
-
-    var c1Sw = 0, c1Hw = 0, c1Total = 0;
-    for (var i = 0; i < center1Data.length; i++) {
-        c1Sw += center1Data[i].swScore;
-        c1Hw += center1Data[i].hwScore;
-        c1Total += center1Data[i].totalScore;
-    }
-    var c2Sw = 0, c2Hw = 0, c2Total = 0;
-    for (var j = 0; j < center2Data.length; j++) {
-        c2Sw += center2Data[j].swScore;
-        c2Hw += center2Data[j].hwScore;
-        c2Total += center2Data[j].totalScore;
-    }
-    var otherSw = 0, otherHw = 0, otherTotal = 0;
-    for (var k = 0; k < centerOtherData.length; k++) {
-        otherSw += centerOtherData[k].swScore;
-        otherHw += centerOtherData[k].hwScore;
-        otherTotal += centerOtherData[k].totalScore;
-    }
-
-    var totalSw = 0, totalHw = 0, totalScore = 0;
-    for (var m = 0; m < openData.length; m++) {
-        totalSw += openData[m].swScore;
-        totalHw += openData[m].hwScore;
-        totalScore += openData[m].totalScore;
-    }
-    var avgScore = openCount > 0 ? (totalScore / openCount).toFixed(2) : '0';
-
-    safeSetHTML('kpiGrid',
-        '<div class="kpi-card" style="border-left:4px solid #f97316;"><div class="label">📊 总问题数 (1/5~5/5)</div><div class="value">' + trackedCount + '</div><div class="sub">🟡未关闭 ' + openCount + ' · ✅已关闭 ' + closedCount + '</div></div>' +
-        '<div class="kpi-card" style="border-left:4px solid #f59e0b;"><div class="label">🟡 未关闭 (1/5~4/5)</div><div class="value">' + openCount + '</div><div class="sub">软件 <span class="tag-soft">' + totalSw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + totalHw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + totalScore.toFixed(1) + '</span></div></div>' +
-        '<div class="kpi-card" style="border-left:4px solid #10b981;"><div class="label">✅ 已关闭 (5/5)</div><div class="value">' + closedCount + '</div><div class="sub">不计分 · 占比 ' + (trackedCount > 0 ? Math.round(closedCount / trackedCount * 100) : 0) + '%</div></div>' +
-        '<div class="kpi-card" style="border-left:4px solid #3b82f6;"><div class="label"><span class="dept-tag">' + center1Name.substring(0, 8) + '</span></div><div class="value">' + center1Data.length + '</div><div class="sub">软件 <span class="tag-soft">' + c1Sw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + c1Hw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + c1Total.toFixed(1) + '</span></div></div>' +
-        '<div class="kpi-card" style="border-left:4px solid #8b5cf6;"><div class="label"><span class="dept-tag purple">' + center2Name.substring(0, 8) + '</span></div><div class="value">' + center2Data.length + '</div><div class="sub">软件 <span class="tag-soft">' + c2Sw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + c2Hw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + c2Total.toFixed(1) + '</span></div></div>' +
-        '<div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">' + centerOther + '</span></div><div class="value">' + centerOtherData.length + '</div><div class="sub">软件 <span class="tag-soft">' + otherSw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + otherHw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + otherTotal.toFixed(1) + '</span></div></div>' +
-        '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
-    );
-
-    renderStatsTable(openData);
-    renderTargetCharts(openData);
-
-    var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
-    updateOwnerFilter(allData);
-
-    var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
-    var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
-    renderTableWithFilter(data, ownerFilter, centerFilter);
-
-    renderCharts(openData);
-}
-
-// ============================================================
-// 图表渲染
-// ============================================================
-function renderCharts(openData) {
-    var statusSW = groupBySum(openData, 'mainStatus', 'swScore');
-    renderScoreBarChart('chartStatusSW', statusSW, '软件分', '#3b82f6');
-    var statusHW = groupBySum(openData, 'mainStatus', 'hwScore');
-    renderScoreBarChart('chartStatusHW', statusHW, '硬件分', '#10b981');
-    var impSW = groupBySum(openData, 'importance', 'swScore');
-    renderScoreBarChart('chartImportanceSW', impSW, '软件分', '#3b82f6');
-    var impHW = groupBySum(openData, 'importance', 'hwScore');
-    renderScoreBarChart('chartImportanceHW', impHW, '硬件分', '#10b981');
-    var deptData = groupBy(openData, 'matchedDept');
-    renderBarChart('chartDept', deptData, '#8b5cf6');
-    renderProjectCenterChart(openData);
-    renderGanttChart(openData);
-    var topData = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
-    var topChartData = [];
-    for (var i = 0; i < topData.length; i++) {
-        var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
-        topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
-    }
-    renderScoreChart('chartScore', topChartData);
-    var sourceData = groupBy(openData, 'matchedProf');
-    renderBarChart('chartSource', sourceData, '#06b6d4');
-}
-
-// ============================================================
-// 图表渲染函数
-// ============================================================
-function renderScoreBarChart(domId, data, label, color) {
-    var dom = document.getElementById(domId);
-    if (!dom) return;
-    if (chartInstances[domId]) { chartInstances[domId].dispose(); }
-    var chart = echarts.init(dom);
-    chartInstances[domId] = chart;
-    var categories = [], values = [];
-    var total = 0;
-    for (var i = 0; i < data.length; i++) {
-        categories.push(data[i][0]);
-        values.push(data[i][1]);
-        total += data[i][1];
-    }
-    chart.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                var p = params[0];
-                var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
-                return '<strong>' + p.name + '</strong><br/>' + label + ': ' + p.value.toFixed(1) + ' (' + pct + '%)';
-            }
-        },
-        grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
-        xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9, interval: 0 } },
-        yAxis: { type: 'value', name: label, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
-        series: [{
-            data: values,
-            type: 'bar',
-            barWidth: '40%',
-            itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
-            label: { show: true, position: 'top', fontSize: 9, fontWeight: 600, color: '#334155', formatter: function(p) { return p.value.toFixed(1); } }
-        }]
-    });
-    var resizeHandler = function() { chart.resize(); };
-    window.removeEventListener('resize', resizeHandler);
-    window.addEventListener('resize', resizeHandler);
-    chart._resizeHandler = resizeHandler;
-}
-
-function renderProjectCenterChart(openData) {
-    var dom = document.getElementById('chartProjectCompare');
-    if (!dom) return;
-    if (chartInstances['chartProjectCompare']) { chartInstances['chartProjectCompare'].dispose(); }
-    var chart = echarts.init(dom);
-    chartInstances['chartProjectCompare'] = chart;
-    var center1 = "智能驾驶与座舱开发中心", center2 = "智能电子电气开发中心", centerOther = "其他中心";
-
-    var projectConfig = appConfig ? appConfig.projectConfig : null;
-    var projectIds = [];
-    var projectNames = [];
-    if (projectConfig && projectConfig.projects) {
-        for (var i = 0; i < projectConfig.projects.length; i++) {
-            var p = projectConfig.projects[i];
-            projectIds.push(p.id);
-            projectNames.push(p.name);
-        }
-    }
-    projectIds.push('other');
-    projectNames.push('其他项目');
-
-    var c1Sw = [], c1Hw = [], c2Sw = [], c2Hw = [], cOtherSw = [], cOtherHw = [];
-    for (var pi = 0; pi < projectIds.length; pi++) {
-        var pid = projectIds[pi];
-        var d1 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center1; });
-        var d2 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center2; });
-        var dOther = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === centerOther; });
-        var s1 = 0, h1 = 0, s2 = 0, h2 = 0, sOther = 0, hOther = 0;
-        for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore; h1 += d1[j].hwScore; }
-        for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore; h2 += d2[k].hwScore; }
-        for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore; hOther += dOther[l].hwScore; }
-        c1Sw.push(s1); c1Hw.push(h1);
-        c2Sw.push(s2); c2Hw.push(h2);
-        cOtherSw.push(sOther); cOtherHw.push(hOther);
-    }
-
-    var short1 = center1.substring(0, 6);
-    var short2 = center2.substring(0, 6);
-
-    chart.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                var html = '<strong>' + params[0].name + '</strong><br/>';
-                for (var i = 0; i < params.length; i++) {
-                    html += params[i].marker + ' ' + params[i].seriesName + ': ' + params[i].value.toFixed(1) + ' 分<br/>';
-                }
-                return html;
-            }
-        },
-        legend: {
-            data: [short1 + '软件', short1 + '硬件', short2 + '软件', short2 + '硬件', '其他中心软件', '其他中心硬件'],
-            bottom: 0,
-            icon: 'roundRect',
-            itemWidth: 10,
-            itemHeight: 8,
-            fontSize: 8
-        },
-        grid: { left: '6%', right: '4%', top: '10%', bottom: '28%' },
-        xAxis: { type: 'category', data: projectNames },
-        yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
-        series: [
-            { name: short1 + '软件', type: 'bar', data: c1Sw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-            { name: short1 + '硬件', type: 'bar', data: c1Hw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-            { name: short2 + '软件', type: 'bar', data: c2Sw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-            { name: short2 + '硬件', type: 'bar', data: c2Hw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-            { name: '其他中心软件', type: 'bar', data: cOtherSw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#94a3b8' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-            { name: '其他中心硬件', type: 'bar', data: cOtherHw, barWidth: '14%', itemStyle: { borderRadius: [2, 2, 0, 0], color: '#cbd5e1' }, label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } }
-        ]
-    });
-    var resizeHandler = function() { chart.resize(); };
-    window.removeEventListener('resize', resizeHandler);
-    window.addEventListener('resize', resizeHandler);
-    chart._resizeHandler = resizeHandler;
-}
-
-function renderGanttChart(data) {
-    var dom = document.getElementById('chartGantt');
-    if (!dom) return;
-    if (chartInstances['chartGantt']) { chartInstances['chartGantt'].dispose(); }
-    var chart = echarts.init(dom);
-    chartInstances['chartGantt'] = chart;
-    var sorted = data.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 30);
-    var names = [], swData = [], hwData = [];
-    for (var i = 0; i < sorted.length; i++) {
-        var d = sorted[i];
-        names.push('#' + d.id + ' ' + d.owner.substring(0, 4));
-        swData.push(d.swScore);
-        hwData.push(d.hwScore);
-    }
-    chart.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                var idx = params[0].dataIndex;
-                var d = sorted[idx];
-                return '<strong>#' + d.id + ' - ' + d.owner + '</strong><br/>中心: ' + d.matchedDept + '<br/>专业: ' + d.matchedProf + '<br/>改善: ' + d.improveStatus + '<br/>软件: ' + d.swScore + ' · 硬件: ' + d.hwScore + '<br/><strong>总分: ' + d.totalScore.toFixed(1) + '</strong>';
-            }
-        },
-        legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 8 },
-        grid: { left: '3%', right: '6%', top: '6%', bottom: '18%', containLabel: true },
-        xAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
-        yAxis: { type: 'category', data: names, axisLabel: { fontSize: 8, interval: 0 } },
-        series: [
-            { name: '软件分', type: 'bar', stack: 'total', data: swData, barWidth: '50%', itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] }, label: { show: true, position: 'insideRight', formatter: function(p) { return p.value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } },
-            { name: '硬件分', type: 'bar', stack: 'total', data: hwData, barWidth: '50%', itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] }, label: { show: true, position: 'insideRight', formatter: function(p) { return p.value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } }
-        ]
-    });
-    var resizeHandler = function() { chart.resize(); };
-    window.removeEventListener('resize', resizeHandler);
-    window.addEventListener('resize', resizeHandler);
-    chart._resizeHandler = resizeHandler;
-}
-
-function renderBarChart(domId, data, color) {
-    var dom = document.getElementById(domId);
-    if (!dom) return;
-    if (chartInstances[domId]) { chartInstances[domId].dispose(); }
-    var chart = echarts.init(dom);
-    chartInstances[domId] = chart;
-    var categories = [], values = [];
-    var total = 0;
-    for (var i = 0; i < data.length; i++) {
-        categories.push(data[i][0]);
-        values.push(data[i][1]);
-        total += data[i][1];
-    }
-    chart.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                var p = params[0];
-                var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
-                return '<strong>' + p.name + '</strong><br/>数量: ' + p.value + ' (' + pct + '%)';
-            }
-        },
-        grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
-        xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9, interval: 0 } },
-        yAxis: { type: 'value', name: '数量', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
-        series: [{
-            data: values,
-            type: 'bar',
-            barWidth: '40%',
-            itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
-            label: { show: true, position: 'top', fontSize: 9, fontWeight: 600, color: '#334155' }
-        }]
-    });
-    var resizeHandler = function() { chart.resize(); };
-    window.removeEventListener('resize', resizeHandler);
-    window.addEventListener('resize', resizeHandler);
-    chart._resizeHandler = resizeHandler;
-}
-
-function renderScoreChart(domId, data) {
-    var dom = document.getElementById(domId);
-    if (!dom) return;
-    if (chartInstances[domId]) { chartInstances[domId].dispose(); }
-    var chart = echarts.init(dom);
-    chartInstances[domId] = chart;
-    var categories = [], values = [];
-    for (var i = 0; i < data.length; i++) {
-        categories.push(data[i][0]);
-        values.push(data[i][1]);
-    }
-    chart.setOption({
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: function(params) {
-                var p = params[0];
-                return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value + ' 分';
-            }
-        },
-        grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
-        xAxis: { type: 'category', data: categories, axisLabel: { rotate: 15, fontSize: 8, interval: 0 } },
-        yAxis: { type: 'value', name: '总分', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
-        series: [{
-            data: values,
-            type: 'bar',
-            barWidth: '40%',
-            itemStyle: {
-                borderRadius: [4, 4, 0, 0],
-                color: function(params) {
-                    var v = params.value;
-                    if (v >= 5) return '#dc2626';
-                    if (v >= 1) return '#f59e0b';
-                    return '#3b82f6';
-                }
-            },
-            label: { show: true, position: 'top', fontSize: 9, fontWeight: 700, color: '#334155' }
-        }]
-    });
-    var resizeHandler = function() { chart.resize(); };
-    window.removeEventListener('resize', resizeHandler);
-    window.addEventListener('resize', resizeHandler);
-    chart._resizeHandler = resizeHandler;
-}
-
-// ============================================================
-// ★★★ 页面启动 ★★★
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    loadAllConfigs();
-
-    setTimeout(function() {
-        document.getElementById('loadingIndicator').classList.add('hidden');
-        document.getElementById('loadingIndicator').style.display = 'none';
-        document.getElementById('contentArea').classList.remove('hidden');
-        document.getElementById('contentArea').style.display = 'block';
-        console.log('✅ 页面加载完成');
-    }, 500);
-});
-</script>
+    </script>
 </body>
 </html>
