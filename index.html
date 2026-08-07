@@ -243,11 +243,32 @@
             color: #d97706;
         }
 
+        .project-section {
+            margin-bottom: 16px;
+        }
+        .project-section .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            padding: 8px 0 8px 12px;
+            border-left: 4px solid #3b82f6;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+        .project-section .section-title .badge {
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            margin-left: 10px;
+        }
+
         .chart-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 14px;
-            margin-bottom: 16px;
+            margin-bottom: 0;
         }
         .chart-card {
             background: white;
@@ -759,57 +780,9 @@
                 </div>
             </div>
 
-            <!-- ===== 目标差值图表 ===== -->
-            <div id="targetChartRow" class="chart-grid" style="margin-bottom:16px;">
-                <div id="targetChartContainer" class="chart-card">
-                    <div class="chart-title"><i class="fas fa-bullseye"></i> 项目1 目标差值</div>
-                    <div id="chartTarget1" class="chart-container" style="height:260px;"></div>
-                </div>
-                <div id="targetChartContainer2" class="chart-card">
-                    <div class="chart-title"><i class="fas fa-bullseye"></i> 项目2 目标差值</div>
-                    <div id="chartTarget2" class="chart-container" style="height:260px;"></div>
-                </div>
-                <div class="chart-card" style="visibility:hidden;"></div>
-            </div>
-
-            <!-- ===== 其他图表 ===== -->
-            <div id="chartGrid" class="chart-grid">
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (软件分)</div>
-                    <div id="chartStatusSW" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-tasks"></i> 主单状态 (硬件分)</div>
-                    <div id="chartStatusHW" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (软件分)</div>
-                    <div id="chartImportanceSW" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-exclamation-triangle"></i> 重要度分布 (硬件分)</div>
-                    <div id="chartImportanceHW" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-building"></i> 匹配中心分布</div>
-                    <div id="chartDept" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-chart-bar"></i> 各项目·中心软件/硬件分值</div>
-                    <div id="chartProjectCompare" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-project-diagram"></i> 缺陷评分甘特图</div>
-                    <div id="chartGantt" class="chart-container" style="height:280px;"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-star"></i> 综合评分 Top5</div>
-                    <div id="chartScore" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-title"><i class="fas fa-bug"></i> 专业分布</div>
-                    <div id="chartSource" class="chart-container"></div>
-                </div>
+            <!-- ===== 图表区域（按项目分组） ===== -->
+            <div id="chartsContainer">
+                <!-- 由 JavaScript 动态生成 -->
             </div>
 
             <!-- ===== 明细表格 ===== -->
@@ -895,8 +868,6 @@
                 filterBar: 'filterBar',
                 kpiGrid: 'kpiGrid',
                 statsTable: 'statsWrapper',
-                targetChart: 'targetChartContainer',
-                targetChart2: 'targetChartContainer2',
                 chartGrid: 'chartGrid',
                 tableWrapper: 'tableWrapper',
                 footerNote: 'footerNote',
@@ -1001,7 +972,7 @@
                 })
                 .catch(function() {
                     displayConfig = { modules: { header: true, statusBar: false, filterBar: true, kpiGrid: true,
-                            statsTable: true, targetChart: true, chartGrid: true, tableWrapper: true,
+                            statsTable: true, chartGrid: true, tableWrapper: true,
                             footerNote: true, fileUploadArea: true, loadingIndicator: true, errorMsg: true } };
                     configLoaded.display = true;
                     applyDisplayConfig();
@@ -1665,294 +1636,680 @@
         }
 
         // ============================================================
-        // ★★★ 目标差值图表（修复 Tooltip 显示问题 - 使用 IIFE 固话数据）★★★
+        // ★★★ 渲染按项目分组的图表 ★★★
         // ============================================================
-        function renderTargetCharts(openData) {
-            var modules = displayConfig.modules || {};
-            if (modules.targetChart === false) return;
-
-            if (!appConfig || !appConfig.stageTarget) {
-                console.warn('⚠️ stageTarget 配置不存在');
-                return;
-            }
+        function renderProjectCharts(openData) {
+            var container = document.getElementById('chartsContainer');
+            if (!container) return;
 
             var projects = appConfig.projectConfig.projects || [];
-            var stages = appConfig.stageTarget.stages || {};
-            var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+            if (projects.length === 0) return;
 
-            var chartContainers = ['chartTarget1', 'chartTarget2'];
-            var containerIndex = 0;
+            var html = '';
+
+            // 定义每个项目的图表列表
+            // 每个项目显示: 目标差值(大图)、主单状态、重要度分布、中心分布、项目对比、甘特图、综合评分Top5、专业分布
+            var chartConfigs = [
+                { id: 'targetDiff', title: '目标差值', icon: 'fa-bullseye', height: '260px', type: 'target' },
+                { id: 'statusSW', title: '主单状态 (软件分)', icon: 'fa-tasks', height: '200px', type: 'statusSW' },
+                { id: 'statusHW', title: '主单状态 (硬件分)', icon: 'fa-tasks', height: '200px', type: 'statusHW' },
+                { id: 'importanceSW', title: '重要度分布 (软件分)', icon: 'fa-exclamation-triangle', height: '200px',
+                    type: 'importanceSW' },
+                { id: 'importanceHW', title: '重要度分布 (硬件分)', icon: 'fa-exclamation-triangle', height: '200px',
+                    type: 'importanceHW' },
+                { id: 'dept', title: '匹配中心分布', icon: 'fa-building', height: '200px', type: 'dept' },
+                { id: 'projectCompare', title: '各中心软件/硬件分值', icon: 'fa-chart-bar', height: '200px',
+                    type: 'projectCompare' },
+                { id: 'gantt', title: '缺陷评分甘特图', icon: 'fa-project-diagram', height: '280px', type: 'gantt' },
+                { id: 'scoreTop', title: '综合评分 Top5', icon: 'fa-star', height: '200px', type: 'scoreTop' },
+                { id: 'source', title: '专业分布', icon: 'fa-bug', height: '200px', type: 'source' }
+            ];
 
             for (var pi = 0; pi < projects.length; pi++) {
                 var proj = projects[pi];
                 var projectId = proj.id;
                 var projectName = proj.name;
-                var stageId = proj.stage || 'SG10';
-                var stage = stages[stageId];
 
-                if (containerIndex >= chartContainers.length) break;
+                // 检查是否有数据
+                var hasData = openData.some(function(d) { return d.projectId === projectId; });
+                if (!hasData) continue;
 
-                var domId = chartContainers[containerIndex];
-                var dom = document.getElementById(domId);
-                if (!dom) {
-                    console.warn('⚠️ 找不到图表容器:', domId);
-                    containerIndex++;
-                    continue;
+                var sectionId = 'projectSection_' + projectId;
+                html += '<div class="project-section" id="' + sectionId + '">';
+                html += '<div class="section-title"><i class="fas fa-folder-open" style="color:#3b82f6;margin-right:8px;"></i>' +
+                    projectName + '<span class="badge">共 ' +
+                    openData.filter(function(d) { return d.projectId === projectId; }).length + ' 条</span></div>';
+                html += '<div class="chart-grid" id="chartGrid_' + projectId + '">';
+
+                for (var ci = 0; ci < chartConfigs.length; ci++) {
+                    var cfg = chartConfigs[ci];
+                    var chartId = 'chart_' + projectId + '_' + cfg.id;
+                    html += '<div class="chart-card">';
+                    html += '<div class="chart-title"><i class="fas ' + cfg.icon + '"></i> ' + cfg.title + '</div>';
+                    html += '<div id="' + chartId + '" class="chart-container" style="height:' + cfg.height + ';"></div>';
+                    html += '</div>';
                 }
 
-                // 动态更新图表标题
-                var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
-                if (titleEl) {
-                    titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
-                }
-
-                dom.style.width = '100%';
-                dom.style.height = '260px';
-
-                if (chartInstances[domId]) {
-                    chartInstances[domId].dispose();
-                    delete chartInstances[domId];
-                }
-
-                var chart = echarts.init(dom);
-                chartInstances[domId] = chart;
-
-                var projectData = openData.filter(function(d) { return d.projectId === projectId; });
-
-                var categories = [];
-                var actualValues = [];
-                var targetValues = [];
-                var greenParts = [];
-                var redParts = [];
-
-                if (!stage) {
-                    chart.setOption({
-                        title: {
-                            text: '未配置阶段目标 (阶段: ' + stageId + ')',
-                            left: 'center',
-                            top: 'center',
-                            textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
-                        }
-                    });
-                    containerIndex++;
-                    continue;
-                }
-
-                if (projectData.length === 0) {
-                    chart.setOption({
-                        title: {
-                            text: '暂无数据',
-                            left: 'center',
-                            top: 'center',
-                            textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
-                        }
-                    });
-                    containerIndex++;
-                    continue;
-                }
-
-                for (var ci = 0; ci < centerNames.length; ci++) {
-                    var cName = centerNames[ci];
-                    var cConfig = stage.centers[cName];
-                    if (!cConfig) continue;
-
-                    var profs = cConfig.professions || {};
-                    var target = cConfig.target || 0;
-                    var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
-
-                    var profActuals = {};
-                    for (var profName in profs) {
-                        if (profs.hasOwnProperty(profName)) {
-                            var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
-                            var profActual = 0;
-                            for (var di = 0; di < profData.length; di++) {
-                                profActual += profData[di].swScore;
-                            }
-                            profActuals[profName] = profActual;
-                        }
-                    }
-
-                    for (var profName2 in profs) {
-                        if (profs.hasOwnProperty(profName2)) {
-                            var ratio = profs[profName2] || 0;
-                            var profTarget = target * ratio;
-                            var profActual2 = profActuals[profName2] || 0;
-                            var shortName = cName.replace('智能驾驶与座舱开发中心', '座舱').replace(
-                                '智能电子电气开发中心', '电子电气');
-                            var displayName = shortName + '-' + profName2;
-                            categories.push(displayName);
-                            actualValues.push(Math.round(profActual2 * 10) / 10);
-                            targetValues.push(Math.round(profTarget * 10) / 10);
-
-                            var green = Math.min(profActual2, profTarget);
-                            var red = Math.max(0, profActual2 - profTarget);
-                            greenParts.push(Math.round(green * 10) / 10);
-                            redParts.push(Math.round(red * 10) / 10);
-                        }
-                    }
-                }
-
-                if (categories.length === 0) {
-                    chart.setOption({
-                        title: {
-                            text: '暂无专业数据',
-                            left: 'center',
-                            top: 'center',
-                            textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
-                        }
-                    });
-                    containerIndex++;
-                    continue;
-                }
-
-                // ★★★ 关键修复：使用 IIFE 为每个图表创建独立的作用域 ★★★
-                // 将当前图表的数据固话到闭包中，避免被后续循环覆盖
-                (function(chartInstance, cats, actuals, targets, greens, reds) {
-                    chartInstance.setOption({
-                        tooltip: {
-                            trigger: 'axis',
-                            axisPointer: { type: 'shadow' },
-                            formatter: function(params) {
-                                // ★★★ 使用闭包中固化的数据 ★★★
-                                var idx = 0;
-                                for (var p = 0; p < params.length; p++) {
-                                    if (params[p].dataIndex !== undefined) {
-                                        idx = params[p].dataIndex;
-                                        break;
-                                    }
-                                }
-                                var name = cats[idx] || '';
-                                var actual = actuals[idx] || 0;
-                                var target = targets[idx] || 0;
-                                var diff = actual - target;
-                                var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
-                                var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
-                                var color = diff <= 0 ? '#10b981' : '#ef4444';
-                                return '<strong>' + name + '</strong><br/>' +
-                                    '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
-                                    '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
-                                    '差值: <strong style="color:' + color + ';">' + diffDisplay +
-                                    '</strong><br/>' +
-                                    '状态: ' + status;
-                            }
-                        },
-                        legend: {
-                            data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
-                            bottom: 0,
-                            icon: 'roundRect',
-                            itemWidth: 12,
-                            itemHeight: 8,
-                            fontSize: 10
-                        },
-                        grid: {
-                            left: '6%',
-                            right: '8%',
-                            top: '8%',
-                            bottom: '22%',
-                            containLabel: true
-                        },
-                        xAxis: {
-                            type: 'category',
-                            data: cats,
-                            axisLabel: {
-                                rotate: 30,
-                                fontSize: 8,
-                                interval: 0,
-                                width: 70,
-                                overflow: 'break'
-                            }
-                        },
-                        yAxis: {
-                            type: 'value',
-                            name: '分值',
-                            splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                            min: 0
-                        },
-                        series: [{
-                            name: '✅ 达标部分 (≤目标)',
-                            type: 'bar',
-                            stack: 'total',
-                            data: greens,
-                            barWidth: '40%',
-                            itemStyle: {
-                                borderRadius: [3, 3, 0, 0],
-                                color: '#10b981'
-                            },
-                            label: {
-                                show: true,
-                                position: 'inside',
-                                fontSize: 8,
-                                fontWeight: 600,
-                                color: 'white',
-                                formatter: function(params) {
-                                    return params.value > 0 ? params.value.toFixed(1) : '';
-                                }
-                            }
-                        }, {
-                            name: '❌ 超标部分 (>目标)',
-                            type: 'bar',
-                            stack: 'total',
-                            data: reds,
-                            barWidth: '40%',
-                            itemStyle: {
-                                borderRadius: [3, 3, 0, 0],
-                                color: '#ef4444'
-                            },
-                            label: {
-                                show: true,
-                                position: 'inside',
-                                fontSize: 8,
-                                fontWeight: 600,
-                                color: 'white',
-                                formatter: function(params) {
-                                    return params.value > 0 ? '+' + params.value.toFixed(1) : '';
-                                }
-                            }
-                        }, {
-                            name: '目标值',
-                            type: 'bar',
-                            data: targets,
-                            barWidth: '40%',
-                            itemStyle: {
-                                borderRadius: [3, 3, 0, 0],
-                                color: '#94a3b8',
-                                opacity: 0.3
-                            },
-                            label: {
-                                show: true,
-                                position: 'top',
-                                fontSize: 7,
-                                fontWeight: 600,
-                                color: '#64748b',
-                                formatter: function(params) {
-                                    return '🎯 ' + params.value.toFixed(1);
-                                }
-                            }
-                        }]
-                    });
-                })(chart, categories.slice(), actualValues.slice(), targetValues.slice(), greenParts
-                    .slice(), redParts.slice());
-
-                // 延迟执行 resize 确保图表尺寸正确
-                setTimeout(function() {
-                    if (chart && !chart.isDisposed()) {
-                        chart.resize();
-                    }
-                }, 200);
-
-                var resizeHandler = function() {
-                    if (chart && !chart.isDisposed()) {
-                        chart.resize();
-                    }
-                };
-                if (chart._resizeHandler) {
-                    window.removeEventListener('resize', chart._resizeHandler);
-                }
-                window.addEventListener('resize', resizeHandler);
-                chart._resizeHandler = resizeHandler;
-
-                containerIndex++;
+                html += '</div></div>';
             }
+
+            container.innerHTML = html;
+
+            // 渲染每个项目的图表
+            for (var pi2 = 0; pi2 < projects.length; pi2++) {
+                var proj2 = projects[pi2];
+                var projectId2 = proj2.id;
+                var hasData2 = openData.some(function(d) { return d.projectId === projectId2; });
+                if (!hasData2) continue;
+
+                var projectData = openData.filter(function(d) { return d.projectId === projectId2; });
+
+                // 延迟渲染，确保DOM已创建
+                setTimeout(function(pid, pdata) {
+                    renderProjectTargetChart(pid, pdata);
+                    renderProjectChartsData(pid, pdata);
+                }, 50, projectId2, projectData);
+            }
+        }
+
+        // ============================================================
+        // ★★★ 渲染单个项目的目标差值图表 ★★★
+        // ============================================================
+        function renderProjectTargetChart(projectId, projectData) {
+            var domId = 'chart_' + projectId + '_targetDiff';
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+
+            if (!appConfig || !appConfig.stageTarget) return;
+
+            var stages = appConfig.stageTarget.stages || {};
+            var projects = appConfig.projectConfig.projects || [];
+            var proj = null;
+            for (var i = 0; i < projects.length; i++) {
+                if (projects[i].id === projectId) { proj = projects[i]; break; }
+            }
+            if (!proj) return;
+
+            var stageId = proj.stage || 'SG10';
+            var stage = stages[stageId];
+            if (!stage) {
+                var chart = echarts.init(dom);
+                chart.setOption({
+                    title: {
+                        text: '未配置阶段目标',
+                        left: 'center',
+                        top: 'center',
+                        textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                    }
+                });
+                chartInstances[domId] = chart;
+                return;
+            }
+
+            if (projectData.length === 0) {
+                var chart = echarts.init(dom);
+                chart.setOption({
+                    title: {
+                        text: '暂无数据',
+                        left: 'center',
+                        top: 'center',
+                        textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                    }
+                });
+                chartInstances[domId] = chart;
+                return;
+            }
+
+            var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+            var categories = [];
+            var actualValues = [];
+            var targetValues = [];
+            var greenParts = [];
+            var redParts = [];
+
+            for (var ci = 0; ci < centerNames.length; ci++) {
+                var cName = centerNames[ci];
+                var cConfig = stage.centers[cName];
+                if (!cConfig) continue;
+
+                var profs = cConfig.professions || {};
+                var target = cConfig.target || 0;
+                var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
+
+                var profActuals = {};
+                for (var profName in profs) {
+                    if (profs.hasOwnProperty(profName)) {
+                        var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
+                        var profActual = 0;
+                        for (var di = 0; di < profData.length; di++) {
+                            profActual += profData[di].swScore;
+                        }
+                        profActuals[profName] = profActual;
+                    }
+                }
+
+                for (var profName2 in profs) {
+                    if (profs.hasOwnProperty(profName2)) {
+                        var ratio = profs[profName2] || 0;
+                        var profTarget = target * ratio;
+                        var profActual2 = profActuals[profName2] || 0;
+                        var shortName = cName.replace('智能驾驶与座舱开发中心', '座舱').replace(
+                            '智能电子电气开发中心', '电子电气');
+                        var displayName = shortName + '-' + profName2;
+                        categories.push(displayName);
+                        actualValues.push(Math.round(profActual2 * 10) / 10);
+                        targetValues.push(Math.round(profTarget * 10) / 10);
+
+                        var green = Math.min(profActual2, profTarget);
+                        var red = Math.max(0, profActual2 - profTarget);
+                        greenParts.push(Math.round(green * 10) / 10);
+                        redParts.push(Math.round(red * 10) / 10);
+                    }
+                }
+            }
+
+            if (categories.length === 0) {
+                var chart = echarts.init(dom);
+                chart.setOption({
+                    title: {
+                        text: '暂无专业数据',
+                        left: 'center',
+                        top: 'center',
+                        textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                    }
+                });
+                chartInstances[domId] = chart;
+                return;
+            }
+
+            if (chartInstances[domId]) {
+                chartInstances[domId].dispose();
+                delete chartInstances[domId];
+            }
+
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+
+            // 固化数据到闭包
+            var chartData = {
+                categories: categories.slice(),
+                actualValues: actualValues.slice(),
+                targetValues: targetValues.slice()
+            };
+
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var cats = chartData.categories;
+                        var actuals = chartData.actualValues;
+                        var targets = chartData.targetValues;
+
+                        var idx = 0;
+                        for (var p = 0; p < params.length; p++) {
+                            if (params[p].dataIndex !== undefined) {
+                                idx = params[p].dataIndex;
+                                break;
+                            }
+                        }
+                        var name = cats[idx] || '';
+                        var actual = actuals[idx] || 0;
+                        var target = targets[idx] || 0;
+                        var diff = actual - target;
+                        var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
+                        var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
+                        var color = diff <= 0 ? '#10b981' : '#ef4444';
+                        return '<strong>' + name + '</strong><br/>' +
+                            '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
+                            '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
+                            '差值: <strong style="color:' + color + ';">' + diffDisplay +
+                            '</strong><br/>' +
+                            '状态: ' + status;
+                    }
+                },
+                legend: {
+                    data: ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'],
+                    bottom: 0,
+                    icon: 'roundRect',
+                    itemWidth: 12,
+                    itemHeight: 8,
+                    fontSize: 10
+                },
+                grid: {
+                    left: '6%',
+                    right: '8%',
+                    top: '8%',
+                    bottom: '22%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: categories,
+                    axisLabel: {
+                        rotate: 30,
+                        fontSize: 8,
+                        interval: 0,
+                        width: 70,
+                        overflow: 'break'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '分值',
+                    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                    min: 0
+                },
+                series: [{
+                    name: '✅ 达标部分 (≤目标)',
+                    type: 'bar',
+                    stack: 'total',
+                    data: greenParts,
+                    barWidth: '40%',
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#10b981'
+                    },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) {
+                            return params.value > 0 ? params.value.toFixed(1) : '';
+                        }
+                    }
+                }, {
+                    name: '❌ 超标部分 (>目标)',
+                    type: 'bar',
+                    stack: 'total',
+                    data: redParts,
+                    barWidth: '40%',
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#ef4444'
+                    },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) {
+                            return params.value > 0 ? '+' + params.value.toFixed(1) : '';
+                        }
+                    }
+                }, {
+                    name: '目标值',
+                    type: 'bar',
+                    data: targetValues,
+                    barWidth: '40%',
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#94a3b8',
+                        opacity: 0.3
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 7,
+                        fontWeight: 600,
+                        color: '#64748b',
+                        formatter: function(params) {
+                            return '🎯 ' + params.value.toFixed(1);
+                        }
+                    }
+                }]
+            });
+
+            setTimeout(function() {
+                if (chart && !chart.isDisposed()) {
+                    chart.resize();
+                }
+            }, 200);
+
+            var resizeHandler = function() {
+                if (chart && !chart.isDisposed()) {
+                    chart.resize();
+                }
+            };
+            if (chart._resizeHandler) {
+                window.removeEventListener('resize', chart._resizeHandler);
+            }
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        // ============================================================
+        // ★★★ 渲染单个项目的其他图表 ★★★
+        // ============================================================
+        function renderProjectChartsData(projectId, projectData) {
+            // 主单状态 (软件分)
+            var statusSW = groupBySum(projectData, 'mainStatus', 'swScore');
+            renderScoreBarChart('chart_' + projectId + '_statusSW', statusSW, '软件分', '#3b82f6');
+
+            // 主单状态 (硬件分)
+            var statusHW = groupBySum(projectData, 'mainStatus', 'hwScore');
+            renderScoreBarChart('chart_' + projectId + '_statusHW', statusHW, '硬件分', '#10b981');
+
+            // 重要度分布 (软件分)
+            var impSW = groupBySum(projectData, 'importance', 'swScore');
+            renderScoreBarChart('chart_' + projectId + '_importanceSW', impSW, '软件分', '#3b82f6');
+
+            // 重要度分布 (硬件分)
+            var impHW = groupBySum(projectData, 'importance', 'hwScore');
+            renderScoreBarChart('chart_' + projectId + '_importanceHW', impHW, '硬件分', '#10b981');
+
+            // 匹配中心分布
+            var deptData = groupBy(projectData, 'matchedDept');
+            renderBarChart('chart_' + projectId + '_dept', deptData, '#8b5cf6');
+
+            // 各中心软件/硬件分值
+            renderProjectCenterChartSingle('chart_' + projectId + '_projectCompare', projectData);
+
+            // 缺陷评分甘特图
+            renderGanttChartSingle('chart_' + projectId + '_gantt', projectData);
+
+            // 综合评分 Top5
+            var topData = projectData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
+            var topChartData = [];
+            for (var i = 0; i < topData.length; i++) {
+                var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
+                topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
+            }
+            renderScoreChart('chart_' + projectId + '_scoreTop', topChartData);
+
+            // 专业分布
+            var sourceData = groupBy(projectData, 'matchedProf');
+            renderBarChart('chart_' + projectId + '_source', sourceData, '#06b6d4');
+        }
+
+        // ============================================================
+        // ★★★ 单项目各中心软件/硬件分值 ★★★
+        // ============================================================
+        function renderProjectCenterChartSingle(domId, projectData) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+
+            var center1 = "智能驾驶与座舱开发中心",
+                center2 = "智能电子电气开发中心",
+                centerOther = "其他中心";
+
+            var d1 = projectData.filter(function(d) { return d.matchedDept === center1; });
+            var d2 = projectData.filter(function(d) { return d.matchedDept === center2; });
+            var dOther = projectData.filter(function(d) { return d.matchedDept === centerOther; });
+
+            var s1 = 0,
+                h1 = 0,
+                s2 = 0,
+                h2 = 0,
+                sOther = 0,
+                hOther = 0;
+            for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore;
+                h1 += d1[j].hwScore; }
+            for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore;
+                h2 += d2[k].hwScore; }
+            for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore;
+                hOther += dOther[l].hwScore; }
+
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+
+            var short1 = center1.substring(0, 6);
+            var short2 = center2.substring(0, 6);
+
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var html = '<strong>' + params[0].name + '</strong><br/>';
+                        for (var i = 0; i < params.length; i++) {
+                            html += params[i].marker + ' ' + params[i].seriesName + ': ' + params[i].value
+                                .toFixed(1) + ' 分<br/>';
+                        }
+                        return html;
+                    }
+                },
+                legend: {
+                    data: [short1 + '软件', short1 + '硬件', short2 + '软件', short2 + '硬件', '其他中心软件',
+                        '其他中心硬件'
+                    ],
+                    bottom: 0,
+                    icon: 'roundRect',
+                    itemWidth: 10,
+                    itemHeight: 8,
+                    fontSize: 8
+                },
+                grid: { left: '6%', right: '4%', top: '10%', bottom: '28%' },
+                xAxis: { type: 'category', data: ['本项目各中心'] },
+                yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [
+                    { name: short1 + '软件', type: 'bar', data: [s1], barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: short1 + '硬件', type: 'bar', data: [h1], barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: short2 + '软件', type: 'bar', data: [s2], barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: short2 + '硬件', type: 'bar', data: [h2], barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: '其他中心软件', type: 'bar', data: [sOther], barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#94a3b8' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
+                    { name: '其他中心硬件', type: 'bar', data: [hOther], barWidth: '14%',
+                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#cbd5e1' },
+                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } }
+                ]
+            });
+
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        // ============================================================
+        // ★★★ 单项目甘特图 ★★★
+        // ============================================================
+        function renderGanttChartSingle(domId, projectData) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var sorted = projectData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 30);
+            var names = [],
+                swData = [],
+                hwData = [];
+            for (var i = 0; i < sorted.length; i++) {
+                var d = sorted[i];
+                names.push('#' + d.id + ' ' + d.owner.substring(0, 4));
+                swData.push(d.swScore);
+                hwData.push(d.hwScore);
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var idx = params[0].dataIndex;
+                        var d = sorted[idx];
+                        return '<strong>#' + d.id + ' - ' + d.owner + '</strong><br/>中心: ' + d
+                            .matchedDept + '<br/>专业: ' + d.matchedProf + '<br/>改善: ' + d
+                            .improveStatus + '<br/>软件: ' + d.swScore + ' · 硬件: ' + d.hwScore +
+                            '<br/><strong>总分: ' + d.totalScore.toFixed(1) + '</strong>';
+                    }
+                },
+                legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10,
+                    itemHeight: 8 },
+                grid: { left: '3%', right: '6%', top: '6%', bottom: '18%', containLabel: true },
+                xAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                yAxis: { type: 'category', data: names, axisLabel: { fontSize: 8, interval: 0 } },
+                series: [
+                    { name: '软件分', type: 'bar', stack: 'total', data: swData, barWidth: '50%',
+                        itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] },
+                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
+                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } },
+                    { name: '硬件分', type: 'bar', stack: 'total', data: hwData, barWidth: '50%',
+                        itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] },
+                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
+                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } }
+                ]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        // ============================================================
+        // 通用图表渲染函数
+        // ============================================================
+        function renderScoreBarChart(domId, data, label, color) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var categories = [],
+                values = [];
+            var total = 0;
+            for (var i = 0; i < data.length; i++) {
+                categories.push(data[i][0]);
+                values.push(data[i][1]);
+                total += data[i][1];
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0];
+                        var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
+                        return '<strong>' + p.name + '</strong><br/>' + label + ': ' + p.value.toFixed(1) +
+                            ' (' + pct + '%)';
+                    }
+                },
+                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9,
+                        interval: 0 } },
+                yAxis: { type: 'value', name: label, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    data: values,
+                    type: 'bar',
+                    barWidth: '40%',
+                    itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
+                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 600,
+                        color: '#334155', formatter: function(p) { return p.value.toFixed(1); } }
+                }]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        function renderBarChart(domId, data, color) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var categories = [],
+                values = [];
+            var total = 0;
+            for (var i = 0; i < data.length; i++) {
+                categories.push(data[i][0]);
+                values.push(data[i][1]);
+                total += data[i][1];
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0];
+                        var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
+                        return '<strong>' + p.name + '</strong><br/>数量: ' + p.value + ' (' + pct +
+                            '%)';
+                    }
+                },
+                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9,
+                        interval: 0 } },
+                yAxis: { type: 'value', name: '数量', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    data: values,
+                    type: 'bar',
+                    barWidth: '40%',
+                    itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
+                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 600,
+                        color: '#334155' }
+                }]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
+        }
+
+        function renderScoreChart(domId, data) {
+            var dom = document.getElementById(domId);
+            if (!dom) return;
+            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+            var chart = echarts.init(dom);
+            chartInstances[domId] = chart;
+            var categories = [],
+                values = [];
+            for (var i = 0; i < data.length; i++) {
+                categories.push(data[i][0]);
+                values.push(data[i][1]);
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0];
+                        return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value + ' 分';
+                    }
+                },
+                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
+                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 15, fontSize: 8,
+                        interval: 0 } },
+                yAxis: { type: 'value', name: '总分', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    data: values,
+                    type: 'bar',
+                    barWidth: '40%',
+                    itemStyle: {
+                        borderRadius: [4, 4, 0, 0],
+                        color: function(params) {
+                            var v = params.value;
+                            if (v >= 5) return '#dc2626';
+                            if (v >= 1) return '#f59e0b';
+                            return '#3b82f6';
+                        }
+                    },
+                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 700,
+                        color: '#334155' }
+                }]
+            });
+            var resizeHandler = function() { chart.resize(); };
+            window.removeEventListener('resize', resizeHandler);
+            window.addEventListener('resize', resizeHandler);
+            chart._resizeHandler = resizeHandler;
         }
 
         // ============================================================
@@ -2072,7 +2429,9 @@
             );
 
             renderStatsTable(openData);
-            renderTargetCharts(openData);
+
+            // 按项目分组渲染图表
+            renderProjectCharts(openData);
 
             var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
             updateOwnerFilter(allData);
@@ -2080,341 +2439,6 @@
             var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
             var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
             renderTableWithFilter(data, ownerFilter, centerFilter);
-
-            renderCharts(openData);
-        }
-
-        // ============================================================
-        // 图表渲染
-        // ============================================================
-        function renderCharts(openData) {
-            var statusSW = groupBySum(openData, 'mainStatus', 'swScore');
-            renderScoreBarChart('chartStatusSW', statusSW, '软件分', '#3b82f6');
-            var statusHW = groupBySum(openData, 'mainStatus', 'hwScore');
-            renderScoreBarChart('chartStatusHW', statusHW, '硬件分', '#10b981');
-            var impSW = groupBySum(openData, 'importance', 'swScore');
-            renderScoreBarChart('chartImportanceSW', impSW, '软件分', '#3b82f6');
-            var impHW = groupBySum(openData, 'importance', 'hwScore');
-            renderScoreBarChart('chartImportanceHW', impHW, '硬件分', '#10b981');
-            var deptData = groupBy(openData, 'matchedDept');
-            renderBarChart('chartDept', deptData, '#8b5cf6');
-            renderProjectCenterChart(openData);
-            renderGanttChart(openData);
-            var topData = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
-            var topChartData = [];
-            for (var i = 0; i < topData.length; i++) {
-                var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
-                topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
-            }
-            renderScoreChart('chartScore', topChartData);
-            var sourceData = groupBy(openData, 'matchedProf');
-            renderBarChart('chartSource', sourceData, '#06b6d4');
-        }
-
-        // ============================================================
-        // 图表渲染函数
-        // ============================================================
-        function renderScoreBarChart(domId, data, label, color) {
-            var dom = document.getElementById(domId);
-            if (!dom) return;
-            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
-            var chart = echarts.init(dom);
-            chartInstances[domId] = chart;
-            var categories = [],
-                values = [];
-            var total = 0;
-            for (var i = 0; i < data.length; i++) {
-                categories.push(data[i][0]);
-                values.push(data[i][1]);
-                total += data[i][1];
-            }
-            chart.setOption({
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'shadow' },
-                    formatter: function(params) {
-                        var p = params[0];
-                        var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
-                        return '<strong>' + p.name + '</strong><br/>' + label + ': ' + p.value.toFixed(1) +
-                            ' (' + pct + '%)';
-                    }
-                },
-                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
-                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9,
-                        interval: 0 } },
-                yAxis: { type: 'value', name: label, splitLine: { lineStyle: { color: '#f0f0f0',
-                            type: 'dashed' } } },
-                series: [{
-                    data: values,
-                    type: 'bar',
-                    barWidth: '40%',
-                    itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
-                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 600,
-                        color: '#334155', formatter: function(p) { return p.value.toFixed(1); } }
-                }]
-            });
-            var resizeHandler = function() { chart.resize(); };
-            window.removeEventListener('resize', resizeHandler);
-            window.addEventListener('resize', resizeHandler);
-            chart._resizeHandler = resizeHandler;
-        }
-
-        function renderProjectCenterChart(openData) {
-            var dom = document.getElementById('chartProjectCompare');
-            if (!dom) return;
-            if (chartInstances['chartProjectCompare']) { chartInstances['chartProjectCompare'].dispose(); }
-            var chart = echarts.init(dom);
-            chartInstances['chartProjectCompare'] = chart;
-            var center1 = "智能驾驶与座舱开发中心",
-                center2 = "智能电子电气开发中心",
-                centerOther = "其他中心";
-
-            var projectConfig = appConfig ? appConfig.projectConfig : null;
-            var projectIds = [];
-            var projectNames = [];
-            if (projectConfig && projectConfig.projects) {
-                for (var i = 0; i < projectConfig.projects.length; i++) {
-                    var p = projectConfig.projects[i];
-                    projectIds.push(p.id);
-                    projectNames.push(p.name);
-                }
-            }
-            projectIds.push('other');
-            projectNames.push('其他项目');
-
-            var c1Sw = [],
-                c1Hw = [],
-                c2Sw = [],
-                c2Hw = [],
-                cOtherSw = [],
-                cOtherHw = [];
-            for (var pi = 0; pi < projectIds.length; pi++) {
-                var pid = projectIds[pi];
-                var d1 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center1; });
-                var d2 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center2; });
-                var dOther = openData.filter(function(d) { return d.projectId === pid && d.matchedDept ===
-                        centerOther; });
-                var s1 = 0,
-                    h1 = 0,
-                    s2 = 0,
-                    h2 = 0,
-                    sOther = 0,
-                    hOther = 0;
-                for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore;
-                    h1 += d1[j].hwScore; }
-                for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore;
-                    h2 += d2[k].hwScore; }
-                for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore;
-                    hOther += dOther[l].hwScore; }
-                c1Sw.push(s1);
-                c1Hw.push(h1);
-                c2Sw.push(s2);
-                c2Hw.push(h2);
-                cOtherSw.push(sOther);
-                cOtherHw.push(hOther);
-            }
-
-            var short1 = center1.substring(0, 6);
-            var short2 = center2.substring(0, 6);
-
-            chart.setOption({
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'shadow' },
-                    formatter: function(params) {
-                        var html = '<strong>' + params[0].name + '</strong><br/>';
-                        for (var i = 0; i < params.length; i++) {
-                            html += params[i].marker + ' ' + params[i].seriesName + ': ' + params[i].value
-                                .toFixed(1) + ' 分<br/>';
-                        }
-                        return html;
-                    }
-                },
-                legend: {
-                    data: [short1 + '软件', short1 + '硬件', short2 + '软件', short2 + '硬件', '其他中心软件',
-                        '其他中心硬件'
-                    ],
-                    bottom: 0,
-                    icon: 'roundRect',
-                    itemWidth: 10,
-                    itemHeight: 8,
-                    fontSize: 8
-                },
-                grid: { left: '6%', right: '4%', top: '10%', bottom: '28%' },
-                xAxis: { type: 'category', data: projectNames },
-                yAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
-                            type: 'dashed' } } },
-                series: [
-                    { name: short1 + '软件', type: 'bar', data: c1Sw, barWidth: '14%',
-                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#3b82f6' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: short1 + '硬件', type: 'bar', data: c1Hw, barWidth: '14%',
-                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#60a5fa' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: short2 + '软件', type: 'bar', data: c2Sw, barWidth: '14%',
-                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#8b5cf6' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: short2 + '硬件', type: 'bar', data: c2Hw, barWidth: '14%',
-                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#a78bfa' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: '其他中心软件', type: 'bar', data: cOtherSw, barWidth: '14%',
-                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#94a3b8' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } },
-                    { name: '其他中心硬件', type: 'bar', data: cOtherHw, barWidth: '14%',
-                        itemStyle: { borderRadius: [2, 2, 0, 0], color: '#cbd5e1' },
-                    label: { show: true, position: 'top', fontSize: 7, fontWeight: 600 } }
-                ]
-            });
-            var resizeHandler = function() { chart.resize(); };
-            window.removeEventListener('resize', resizeHandler);
-            window.addEventListener('resize', resizeHandler);
-            chart._resizeHandler = resizeHandler;
-        }
-
-        function renderGanttChart(data) {
-            var dom = document.getElementById('chartGantt');
-            if (!dom) return;
-            if (chartInstances['chartGantt']) { chartInstances['chartGantt'].dispose(); }
-            var chart = echarts.init(dom);
-            chartInstances['chartGantt'] = chart;
-            var sorted = data.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 30);
-            var names = [],
-                swData = [],
-                hwData = [];
-            for (var i = 0; i < sorted.length; i++) {
-                var d = sorted[i];
-                names.push('#' + d.id + ' ' + d.owner.substring(0, 4));
-                swData.push(d.swScore);
-                hwData.push(d.hwScore);
-            }
-            chart.setOption({
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'shadow' },
-                    formatter: function(params) {
-                        var idx = params[0].dataIndex;
-                        var d = sorted[idx];
-                        return '<strong>#' + d.id + ' - ' + d.owner + '</strong><br/>中心: ' + d
-                            .matchedDept + '<br/>专业: ' + d.matchedProf + '<br/>改善: ' + d
-                            .improveStatus + '<br/>软件: ' + d.swScore + ' · 硬件: ' + d.hwScore +
-                            '<br/><strong>总分: ' + d.totalScore.toFixed(1) + '</strong>';
-                    }
-                },
-                legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10,
-                    itemHeight: 8 },
-                grid: { left: '3%', right: '6%', top: '6%', bottom: '18%', containLabel: true },
-                xAxis: { type: 'value', name: '分值', splitLine: { lineStyle: { color: '#f0f0f0',
-                            type: 'dashed' } } },
-                yAxis: { type: 'category', data: names, axisLabel: { fontSize: 8, interval: 0 } },
-                series: [
-                    { name: '软件分', type: 'bar', stack: 'total', data: swData, barWidth: '50%',
-                        itemStyle: { color: '#3b82f6', borderRadius: [0, 0, 0, 0] },
-                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
-                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } },
-                    { name: '硬件分', type: 'bar', stack: 'total', data: hwData, barWidth: '50%',
-                        itemStyle: { color: '#10b981', borderRadius: [0, 4, 4, 0] },
-                    label: { show: true, position: 'insideRight', formatter: function(p) { return p
-                                .value > 0 ? p.value : ''; }, fontSize: 8, color: 'white' } }
-                ]
-            });
-            var resizeHandler = function() { chart.resize(); };
-            window.removeEventListener('resize', resizeHandler);
-            window.addEventListener('resize', resizeHandler);
-            chart._resizeHandler = resizeHandler;
-        }
-
-        function renderBarChart(domId, data, color) {
-            var dom = document.getElementById(domId);
-            if (!dom) return;
-            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
-            var chart = echarts.init(dom);
-            chartInstances[domId] = chart;
-            var categories = [],
-                values = [];
-            var total = 0;
-            for (var i = 0; i < data.length; i++) {
-                categories.push(data[i][0]);
-                values.push(data[i][1]);
-                total += data[i][1];
-            }
-            chart.setOption({
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'shadow' },
-                    formatter: function(params) {
-                        var p = params[0];
-                        var pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : 0;
-                        return '<strong>' + p.name + '</strong><br/>数量: ' + p.value + ' (' + pct +
-                            '%)';
-                    }
-                },
-                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
-                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 20, fontSize: 9,
-                        interval: 0 } },
-                yAxis: { type: 'value', name: '数量', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
-                            type: 'dashed' } } },
-                series: [{
-                    data: values,
-                    type: 'bar',
-                    barWidth: '40%',
-                    itemStyle: { borderRadius: [4, 4, 0, 0], color: color },
-                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 600,
-                        color: '#334155' }
-                }]
-            });
-            var resizeHandler = function() { chart.resize(); };
-            window.removeEventListener('resize', resizeHandler);
-            window.addEventListener('resize', resizeHandler);
-            chart._resizeHandler = resizeHandler;
-        }
-
-        function renderScoreChart(domId, data) {
-            var dom = document.getElementById(domId);
-            if (!dom) return;
-            if (chartInstances[domId]) { chartInstances[domId].dispose(); }
-            var chart = echarts.init(dom);
-            chartInstances[domId] = chart;
-            var categories = [],
-                values = [];
-            for (var i = 0; i < data.length; i++) {
-                categories.push(data[i][0]);
-                values.push(data[i][1]);
-            }
-            chart.setOption({
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'shadow' },
-                    formatter: function(params) {
-                        var p = params[0];
-                        return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value + ' 分';
-                    }
-                },
-                grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
-                xAxis: { type: 'category', data: categories, axisLabel: { rotate: 15, fontSize: 8,
-                        interval: 0 } },
-                yAxis: { type: 'value', name: '总分', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
-                            type: 'dashed' } } },
-                series: [{
-                    data: values,
-                    type: 'bar',
-                    barWidth: '40%',
-                    itemStyle: {
-                        borderRadius: [4, 4, 0, 0],
-                        color: function(params) {
-                            var v = params.value;
-                            if (v >= 5) return '#dc2626';
-                            if (v >= 1) return '#f59e0b';
-                            return '#3b82f6';
-                        }
-                    },
-                    label: { show: true, position: 'top', fontSize: 9, fontWeight: 700,
-                        color: '#334155' }
-                }]
-            });
-            var resizeHandler = function() { chart.resize(); };
-            window.removeEventListener('resize', resizeHandler);
-            window.addEventListener('resize', resizeHandler);
-            chart._resizeHandler = resizeHandler;
         }
 
         // ============================================================
