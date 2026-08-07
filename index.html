@@ -702,6 +702,8 @@ function processWorkbook(wb, fileName) {
     }
 
     currentData = records;
+    
+    // ★★★ 强制显示内容区域 ★★★
     document.getElementById('fileUploadArea').classList.add('hidden');
     document.getElementById('fileUploadArea').style.display = 'none';
     document.getElementById('contentArea').classList.remove('hidden');
