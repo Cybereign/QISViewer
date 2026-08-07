@@ -312,6 +312,41 @@
 
 <script>
 // ============================================================
+// ★★★ 性能日志开关 ★★★
+// ============================================================
+var ENABLE_PERF_LOG = true;  // 改为 false 可关闭所有性能日志
+
+// ============================================================
+// ★★★ 性能日志工具 ★★★
+// ============================================================
+var perfLog = {
+    startTime: Date.now(),
+    marks: {},
+    enabled: ENABLE_PERF_LOG,
+    
+    mark: function(name) {
+        if (!this.enabled) return;
+        var now = Date.now();
+        var elapsed = now - this.startTime;
+        this.marks[name] = { time: now, elapsed: elapsed };
+        console.log('⏱️ [' + elapsed + 'ms] ' + name);
+        return elapsed;
+    },
+    
+    summary: function() {
+        if (!this.enabled) return;
+        console.log('========== 性能摘要 ==========');
+        var keys = Object.keys(this.marks);
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            console.log('  ' + k + ': ' + this.marks[k].elapsed + 'ms');
+        }
+        console.log('总耗时: ' + (Date.now() - this.startTime) + 'ms');
+        console.log('===============================');
+    }
+};
+
+// ============================================================
 // 全局状态
 // ============================================================
 var currentData = [];
@@ -323,6 +358,9 @@ var allProfessions = [];
 var excelLoading = false;
 var displayConfig = {};
 var configLoaded = { project: false, person: false, display: false };
+
+// 缓存分组数据，避免重复计算
+var cachedGroups = {};
 
 // ============================================================
 // 安全设置
@@ -379,12 +417,15 @@ function applyDisplayConfig() {
 // 配置加载
 // ============================================================
 function loadAllConfigs() {
+    perfLog.mark('loadAllConfigs 开始');
+    
     fetch('projectConfig.json?t=' + Date.now())
         .then(function(res) {
             if (!res.ok) throw new Error('projectConfig.json 不存在');
             return res.json();
         })
         .then(function(data) {
+            perfLog.mark('projectConfig.json 加载完成');
             appConfig = data;
             configLoaded.project = true;
             safeSetText('swWeightStatus', '已配置');
@@ -408,6 +449,7 @@ function loadAllConfigs() {
             return res.json();
         })
         .then(function(data) {
+            perfLog.mark('personConfig.json 加载完成');
             buildPersonMap(data);
             configLoaded.person = true;
             var count = Object.keys(personMap).length;
@@ -428,6 +470,7 @@ function loadAllConfigs() {
             return res.json();
         })
         .then(function(data) {
+            perfLog.mark('displayConfig.json 加载完成');
             displayConfig = data;
             configLoaded.display = true;
             applyDisplayConfig();
@@ -445,15 +488,14 @@ function loadAllConfigs() {
 
 function checkAllConfigsLoaded() {
     if (configLoaded.project && configLoaded.person && configLoaded.display) {
+        perfLog.mark('所有配置加载完成');
         console.log('✅ 所有配置加载完成，开始加载数据');
         updateProjectBadges();
         if (!window._appStarted) {
             window._appStarted = true;
             document.getElementById('contentArea').classList.remove('hidden');
             document.getElementById('contentArea').style.display = 'block';
-            // 显示加载提示
             showLoading('正在加载 Excel 数据...');
-            // 直接加载，不用延迟
             autoLoadExcel();
         }
     }
@@ -536,33 +578,39 @@ function hideLoading() {
 }
 
 // ============================================================
-// ★★★ 自动加载 Excel（极简高效版）★★★
+// 自动加载 Excel
 // ============================================================
 function autoLoadExcel() {
     if (excelLoading) {
         console.log('⏳ 加载正在进行中，跳过...');
         return;
     }
+    perfLog.mark('autoLoadExcel 开始');
     excelLoading = true;
     console.log('🔍 开始查找 Excel 文件...');
 
-    // 先尝试 data.xls
     fetch('data.xls', { cache: 'reload' })
         .then(function(res) {
+            perfLog.mark('fetch data.xls 响应');
             if (res.ok) {
                 console.log('✅ 找到 data.xls');
                 return res.arrayBuffer().then(function(buffer) {
+                    perfLog.mark('data.xls 加载完成, 大小: ' + buffer.byteLength + ' bytes');
                     var wb = XLSX.read(buffer, { type: 'array' });
+                    perfLog.mark('XLSX.read 完成');
                     processWorkbook(wb, 'data.xls');
                 });
             } else {
                 console.log('ℹ️ data.xls 不存在，尝试 data.xlsx');
                 return fetch('data.xlsx', { cache: 'reload' })
                     .then(function(res2) {
+                        perfLog.mark('fetch data.xlsx 响应');
                         if (res2.ok) {
                             console.log('✅ 找到 data.xlsx');
                             return res2.arrayBuffer().then(function(buffer) {
+                                perfLog.mark('data.xlsx 加载完成, 大小: ' + buffer.byteLength + ' bytes');
                                 var wb = XLSX.read(buffer, { type: 'array' });
+                                perfLog.mark('XLSX.read 完成');
                                 processWorkbook(wb, 'data.xlsx');
                             });
                         } else {
@@ -572,16 +620,27 @@ function autoLoadExcel() {
             }
         })
         .catch(function(err) {
+            perfLog.mark('autoLoadExcel 失败');
             console.log('ℹ️ 未找到 data.xlsx 或 data.xls:', err.message);
             excelLoading = false;
             hideLoading();
             showManualSelect();
+            perfLog.summary();
         });
 }
 
+// ============================================================
+// ★★★ 优化后的 processWorkbook ★★★
+// ============================================================
 function processWorkbook(wb, fileName) {
+    perfLog.mark('processWorkbook 开始');
+    
     var sheet = wb.Sheets[wb.SheetNames[0]];
+    perfLog.mark('获取 Sheet');
+    
     var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    perfLog.mark('sheet_to_json 完成, 行数: ' + json.length);
+    
     if (!json || json.length === 0) {
         showError('Excel 文件为空');
         excelLoading = false;
@@ -591,6 +650,7 @@ function processWorkbook(wb, fileName) {
 
     var headers = Object.keys(json[0]);
     console.log('✅ 检测到列名:', headers);
+    perfLog.mark('检测列名完成');
 
     var serialCol = null, statusCol = null, ownerCol = null, importanceCol = null, descCol = null, dateCol = null, mainStatusCol = null;
     for (var i = 0; i < headers.length; i++) {
@@ -607,8 +667,14 @@ function processWorkbook(wb, fileName) {
 
     var filterValues = appConfig.statusFilter.values || ['1/5', '2/5', '3/5', '4/5', '5/5'];
     var records = [];
-
-    for (var idx = 0; idx < json.length; idx++) {
+    var totalRows = json.length;
+    
+    perfLog.mark('开始遍历数据, 总行数: ' + totalRows);
+    
+    // 缓存 project 匹配结果，避免重复匹配
+    var projectCache = {};
+    
+    for (var idx = 0; idx < totalRows; idx++) {
         var row = json[idx];
         var get = function(names) {
             for (var n = 0; n < names.length; n++) {
@@ -633,7 +699,12 @@ function processWorkbook(wb, fileName) {
         var isOpen = (improveStatus === '1/5' || improveStatus === '2/5' || improveStatus === '3/5' || improveStatus === '4/5');
         var isClosed = (improveStatus === '5/5');
 
-        var project = matchProject(serialNo);
+        // 使用缓存的项目匹配
+        var project = projectCache[serialNo];
+        if (project === undefined) {
+            project = matchProject(serialNo);
+            projectCache[serialNo] = project;
+        }
         var projectName = project ? project.name : '其他';
         var projectId = project ? project.id : 'other';
 
@@ -675,6 +746,7 @@ function processWorkbook(wb, fileName) {
     }
 
     currentData = records;
+    perfLog.mark('数据遍历完成, 记录数: ' + records.length);
     console.log('✅ 解析完成，共 ' + records.length + ' 条记录');
 
     document.getElementById('fileUploadArea').classList.add('hidden');
@@ -687,6 +759,10 @@ function processWorkbook(wb, fileName) {
     safeSetText('totalCount', records.length);
 
     excelLoading = false;
+    
+    // 清空缓存
+    cachedGroups = {};
+    
     renderAll(records);
 }
 
@@ -758,12 +834,15 @@ function loadExcelFile(file) {
 }
 
 // ============================================================
-// 分组工具
+// ★★★ 优化的分组工具（使用缓存）★★★
 // ============================================================
-function groupBy(arr, key) {
+function groupByCached(data, key, cacheKey) {
+    var cache = cachedGroups[cacheKey];
+    if (cache) return cache;
+    
     var map = {};
-    for (var i = 0; i < arr.length; i++) {
-        var v = arr[i][key] || '未分类';
+    for (var i = 0; i < data.length; i++) {
+        var v = data[i][key] || '未分类';
         v = String(v);
         if (map[v] === undefined) map[v] = 0;
         map[v]++;
@@ -773,22 +852,29 @@ function groupBy(arr, key) {
         if (map.hasOwnProperty(k)) result.push([k, map[k]]);
     }
     result.sort(function(a, b) { return b[1] - a[1]; });
+    
+    cachedGroups[cacheKey] = result;
     return result;
 }
 
-function groupBySum(arr, key, sumKey) {
+function groupBySumCached(data, key, sumKey, cacheKey) {
+    var cache = cachedGroups[cacheKey];
+    if (cache) return cache;
+    
     var map = {};
-    for (var i = 0; i < arr.length; i++) {
-        var v = arr[i][key] || '未分类';
+    for (var i = 0; i < data.length; i++) {
+        var v = data[i][key] || '未分类';
         v = String(v);
         if (map[v] === undefined) map[v] = 0;
-        map[v] += (arr[i][sumKey] || 0);
+        map[v] += (data[i][sumKey] || 0);
     }
     var result = [];
     for (var k in map) {
         if (map.hasOwnProperty(k)) result.push([k, map[k]]);
     }
     result.sort(function(a, b) { return b[1] - a[1]; });
+    
+    cachedGroups[cacheKey] = result;
     return result;
 }
 
@@ -966,9 +1052,10 @@ function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter) 
 }
 
 // ============================================================
-// 渲染统计表格
+// ★★★ 优化后的渲染统计表格 ★★★
 // ============================================================
 function renderStatsTable(openData) {
+    perfLog.mark('renderStatsTable 开始');
     var tbody = document.getElementById('statsBody');
     if (!tbody) return;
 
@@ -985,18 +1072,20 @@ function renderStatsTable(openData) {
     projectIds.push('other');
     projectNames['other'] = '其他项目';
 
+    // 使用 Map 加速分组
     var centerMap = {};
     for (var i = 0; i < openData.length; i++) {
         var d = openData[i];
         var center = d.matchedDept || '其他中心';
         var prof = d.matchedProf || '其他专业';
+        var key = center + '|' + prof;
         if (!centerMap[center]) {
             centerMap[center] = {};
         }
         if (!centerMap[center][prof]) {
-            centerMap[center][prof] = 0;
+            centerMap[center][prof] = [];
         }
-        centerMap[center][prof]++;
+        centerMap[center][prof].push(d);
     }
 
     var centerList = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
@@ -1026,32 +1115,39 @@ function renderStatsTable(openData) {
             '<td colspan="14" style="color:' + projectColor + ';">📁 ' + projectName + '（共 ' + projectData.length + ' 条）</td>' +
             '</tr>';
 
+        // 构建项目内的中心-专业数据
+        var projCenterMap = {};
+        for (var di = 0; di < projectData.length; di++) {
+            var d = projectData[di];
+            var center = d.matchedDept || '其他中心';
+            var prof = d.matchedProf || '其他专业';
+            var key = center + '|' + prof;
+            if (!projCenterMap[center]) {
+                projCenterMap[center] = {};
+            }
+            if (!projCenterMap[center][prof]) {
+                projCenterMap[center][prof] = [];
+            }
+            projCenterMap[center][prof].push(d);
+        }
+
         for (var ci = 0; ci < centerList.length; ci++) {
             var center = centerList[ci];
-            var centerData = projectData.filter(function(d) { return d.matchedDept === center; });
-            if (centerData.length === 0) continue;
+            var profDataMap = projCenterMap[center];
+            if (!profDataMap) continue;
 
-            var profs = [];
-            var profSet = {};
-            for (var di = 0; di < centerData.length; di++) {
-                var profName = centerData[di].matchedProf || '其他专业';
-                if (!profSet[profName]) {
-                    profSet[profName] = true;
-                    profs.push(profName);
-                }
-            }
-            profs.sort();
+            var profs = Object.keys(profDataMap).sort();
 
             for (var pri = 0; pri < profs.length; pri++) {
                 var prof = profs[pri];
-                var profData = centerData.filter(function(d) { return d.matchedProf === prof; });
-                if (profData.length === 0) continue;
+                var items = profDataMap[prof];
+                if (!items || items.length === 0) continue;
 
-                var count = profData.length;
+                var count = items.length;
                 var sw = 0, hw = 0, total = 0;
                 var s1 = 0, s2 = 0, s3 = 0, s4 = 0, a = 0, b = 0, c = 0;
-                for (var di2 = 0; di2 < profData.length; di2++) {
-                    var d = profData[di2];
+                for (var ii = 0; ii < items.length; ii++) {
+                    var d = items[ii];
                     sw += d.swScore;
                     hw += d.hwScore;
                     total += d.totalScore;
@@ -1089,12 +1185,14 @@ function renderStatsTable(openData) {
     }
     tbody.innerHTML = html;
     document.getElementById('statsCount').textContent = '共 ' + totalCount + ' 条';
+    perfLog.mark('renderStatsTable 完成');
 }
 
 // ============================================================
-// 目标差值图表
+// ★★★ 目标差值图表（优化版）★★★
 // ============================================================
 function renderTargetCharts(openData) {
+    perfLog.mark('renderTargetCharts 开始');
     var modules = displayConfig.modules || {};
     if (modules.targetChart === false) return;
     if (!appConfig || !appConfig.stageTarget) {
@@ -1136,7 +1234,13 @@ function renderTargetCharts(openData) {
         var chart = echarts.init(dom);
         chartInstances[domId] = chart;
 
-        var projectData = openData.filter(function(d) { return d.projectId === projectId; });
+        // 预过滤项目数据
+        var projectData = [];
+        for (var di = 0; di < openData.length; di++) {
+            if (openData[di].projectId === projectId) {
+                projectData.push(openData[di]);
+            }
+        }
 
         var categories = [];
         var actualValues = [];
@@ -1170,6 +1274,22 @@ function renderTargetCharts(openData) {
             continue;
         }
 
+        // 构建中心-专业数据映射
+        var centerProfMap = {};
+        for (var di2 = 0; di2 < projectData.length; di2++) {
+            var d = projectData[di2];
+            var center = d.matchedDept;
+            var prof = d.matchedProf;
+            var key = center + '|' + prof;
+            if (!centerProfMap[center]) {
+                centerProfMap[center] = {};
+            }
+            if (!centerProfMap[center][prof]) {
+                centerProfMap[center][prof] = [];
+            }
+            centerProfMap[center][prof].push(d);
+        }
+
         for (var ci = 0; ci < centerNames.length; ci++) {
             var cName = centerNames[ci];
             var cConfig = stage.centers[cName];
@@ -1177,15 +1297,16 @@ function renderTargetCharts(openData) {
 
             var profs = cConfig.professions || {};
             var target = cConfig.target || 0;
-            var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
+            var centerItems = centerProfMap[cName] || {};
 
+            // 计算各专业实际值
             var profActuals = {};
             for (var profName in profs) {
                 if (profs.hasOwnProperty(profName)) {
-                    var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
+                    var items = centerItems[profName] || [];
                     var profActual = 0;
-                    for (var di = 0; di < profData.length; di++) {
-                        profActual += profData[di].swScore;
+                    for (var ii = 0; ii < items.length; ii++) {
+                        profActual += items[ii].swScore;
                     }
                     profActuals[profName] = profActual;
                 }
@@ -1223,11 +1344,22 @@ function renderTargetCharts(openData) {
             continue;
         }
 
+        // 固化数据到闭包
+        var tooltipData = {
+            categories: categories.slice(),
+            actualValues: actualValues.slice(),
+            targetValues: targetValues.slice()
+        };
+
         chart.setOption({
             tooltip: {
                 trigger: 'axis',
                 axisPointer: { type: 'shadow' },
                 formatter: function(params) {
+                    var cats = tooltipData.categories;
+                    var actuals = tooltipData.actualValues;
+                    var targets = tooltipData.targetValues;
+
                     var idx = 0;
                     for (var p = 0; p < params.length; p++) {
                         if (params[p].dataIndex !== undefined) {
@@ -1235,9 +1367,9 @@ function renderTargetCharts(openData) {
                             break;
                         }
                     }
-                    var name = categories[idx] || '';
-                    var actual = actualValues[idx] || 0;
-                    var target = targetValues[idx] || 0;
+                    var name = cats[idx] || '';
+                    var actual = actuals[idx] || 0;
+                    var target = targets[idx] || 0;
                     var diff = actual - target;
                     var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
                     var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
@@ -1344,20 +1476,30 @@ function renderTargetCharts(openData) {
         chart._resizeHandler = resizeHandler;
         containerIndex++;
     }
+    perfLog.mark('renderTargetCharts 完成');
 }
 
 // ============================================================
-// 渲染主函数
+// ★★★ 优化的渲染主函数 ★★★
 // ============================================================
 function renderAll(data) {
+    perfLog.mark('renderAll 开始');
+    
     if (!data || data.length === 0) {
         safeSetHTML('kpiGrid', '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#94a3b8;">暂无数据</div>');
         return;
     }
 
-    var openData = data.filter(function(d) { return d.isOpen; });
-    var closedData = data.filter(function(d) { return d.isClosed; });
-    var trackedData = data.filter(function(d) { return d.isTracked; });
+    // 预过滤数据
+    var openData = [];
+    var closedData = [];
+    var trackedData = [];
+    for (var i = 0; i < data.length; i++) {
+        var d = data[i];
+        if (d.isOpen) openData.push(d);
+        if (d.isClosed) closedData.push(d);
+        if (d.isTracked) trackedData.push(d);
+    }
 
     var openCount = openData.length, closedCount = closedData.length, trackedCount = trackedData.length;
 
@@ -1380,33 +1522,38 @@ function renderAll(data) {
     var projectBadges = ['project1Badge', 'project2Badge', 'projectOtherBadge'];
     for (var bi = 0; bi < projectIds.length && bi < projectBadges.length; bi++) {
         var pid = projectIds[bi];
-        var pData = openData.filter(function(d) { return d.projectId === pid; });
+        var count = 0;
+        for (var i = 0; i < openData.length; i++) {
+            if (openData[i].projectId === pid) count++;
+        }
         var label = projectLabels[pid] || pid;
-        safeSetText(projectBadges[bi], label + ': ' + pData.length);
+        safeSetText(projectBadges[bi], label + ': ' + count);
     }
 
     var center1Name = "智能驾驶与座舱开发中心", center2Name = "智能电子电气开发中心", centerOther = "其他中心";
-    var center1Data = openData.filter(function(d) { return d.matchedDept === center1Name; });
-    var center2Data = openData.filter(function(d) { return d.matchedDept === center2Name; });
-    var centerOtherData = openData.filter(function(d) { return d.matchedDept === centerOther; });
-
+    var center1Data = [], center2Data = [], centerOtherData = [];
     var c1Sw = 0, c1Hw = 0, c1Total = 0;
-    for (var i = 0; i < center1Data.length; i++) {
-        c1Sw += center1Data[i].swScore;
-        c1Hw += center1Data[i].hwScore;
-        c1Total += center1Data[i].totalScore;
-    }
     var c2Sw = 0, c2Hw = 0, c2Total = 0;
-    for (var j = 0; j < center2Data.length; j++) {
-        c2Sw += center2Data[j].swScore;
-        c2Hw += center2Data[j].hwScore;
-        c2Total += center2Data[j].totalScore;
-    }
     var otherSw = 0, otherHw = 0, otherTotal = 0;
-    for (var k = 0; k < centerOtherData.length; k++) {
-        otherSw += centerOtherData[k].swScore;
-        otherHw += centerOtherData[k].hwScore;
-        otherTotal += centerOtherData[k].totalScore;
+    
+    for (var i = 0; i < openData.length; i++) {
+        var d = openData[i];
+        if (d.matchedDept === center1Name) {
+            center1Data.push(d);
+            c1Sw += d.swScore;
+            c1Hw += d.hwScore;
+            c1Total += d.totalScore;
+        } else if (d.matchedDept === center2Name) {
+            center2Data.push(d);
+            c2Sw += d.swScore;
+            c2Hw += d.hwScore;
+            c2Total += d.totalScore;
+        } else {
+            centerOtherData.push(d);
+            otherSw += d.swScore;
+            otherHw += d.hwScore;
+            otherTotal += d.totalScore;
+        }
     }
 
     var totalSw = 0, totalHw = 0, totalScore = 0;
@@ -1426,42 +1573,84 @@ function renderAll(data) {
         '<div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">' + centerOther + '</span></div><div class="value">' + centerOtherData.length + '</div><div class="sub">软件 <span class="tag-soft">' + otherSw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + otherHw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + otherTotal.toFixed(1) + '</span></div></div>' +
         '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
     );
+    perfLog.mark('KPI 渲染完成');
 
     renderStatsTable(openData);
     renderTargetCharts(openData);
 
     updateFilterOptions(data);
+    perfLog.mark('updateFilterOptions 完成');
+    
     applyFilters();
+    perfLog.mark('applyFilters 完成');
+    
     renderCharts(openData);
+    perfLog.mark('renderCharts 完成');
+    
+    perfLog.mark('renderAll 完成');
+    perfLog.summary();
 }
 
 // ============================================================
-// 图表渲染
+// ★★★ 优化的图表渲染（分批执行）★★★
 // ============================================================
 function renderCharts(openData) {
-    var statusSW = groupBySum(openData, 'mainStatus', 'swScore');
-    renderScoreBarChart('chartStatusSW', statusSW, '软件分', '#3b82f6');
-    var statusHW = groupBySum(openData, 'mainStatus', 'hwScore');
-    renderScoreBarChart('chartStatusHW', statusHW, '硬件分', '#10b981');
-    var impSW = groupBySum(openData, 'importance', 'swScore');
-    renderScoreBarChart('chartImportanceSW', impSW, '软件分', '#3b82f6');
-    var impHW = groupBySum(openData, 'importance', 'hwScore');
-    renderScoreBarChart('chartImportanceHW', impHW, '硬件分', '#10b981');
-    var deptData = groupBy(openData, 'matchedDept');
-    renderBarChart('chartDept', deptData, '#8b5cf6');
+    perfLog.mark('renderCharts 开始');
+    
+    // 使用 requestAnimationFrame 分批渲染，避免阻塞 UI
+    var chartTasks = [];
+    
+    // 准备所有图表数据
+    var statusSW = groupBySumCached(openData, 'mainStatus', 'swScore', 'statusSW');
+    var statusHW = groupBySumCached(openData, 'mainStatus', 'hwScore', 'statusHW');
+    var impSW = groupBySumCached(openData, 'importance', 'swScore', 'impSW');
+    var impHW = groupBySumCached(openData, 'importance', 'hwScore', 'impHW');
+    var deptData = groupByCached(openData, 'matchedDept', 'deptData');
+    var sourceData = groupByCached(openData, 'matchedProf', 'sourceData');
+    
+    // Top5 数据
+    var topData = [];
+    var sorted = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; });
+    for (var i = 0; i < Math.min(5, sorted.length); i++) {
+        var d = sorted[i];
+        var owner = d.owner.length > 6 ? d.owner.substring(0, 6) + '..' : d.owner;
+        topData.push([d.id + '#' + owner, d.totalScore]);
+    }
+    
+    // 构建任务列表
+    chartTasks.push({ fn: renderScoreBarChart, args: ['chartStatusSW', statusSW, '软件分', '#3b82f6'] });
+    chartTasks.push({ fn: renderScoreBarChart, args: ['chartStatusHW', statusHW, '硬件分', '#10b981'] });
+    chartTasks.push({ fn: renderScoreBarChart, args: ['chartImportanceSW', impSW, '软件分', '#3b82f6'] });
+    chartTasks.push({ fn: renderScoreBarChart, args: ['chartImportanceHW', impHW, '硬件分', '#10b981'] });
+    chartTasks.push({ fn: renderBarChart, args: ['chartDept', deptData, '#8b5cf6'] });
+    chartTasks.push({ fn: renderBarChart, args: ['chartSource', sourceData, '#06b6d4'] });
+    chartTasks.push({ fn: renderScoreChart, args: ['chartScore', topData] });
+    
+    // 复杂图表单独执行
     renderProjectCenterChart(openData);
     renderGanttChart(openData);
-    var topData = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
-    var topChartData = [];
-    for (var i = 0; i < topData.length; i++) {
-        var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
-        topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
+    
+    // 分批执行简单图表
+    var taskIndex = 0;
+    function runNextChart() {
+        if (taskIndex >= chartTasks.length) {
+            perfLog.mark('所有图表渲染完成');
+            return;
+        }
+        var task = chartTasks[taskIndex];
+        task.fn.apply(null, task.args);
+        taskIndex++;
+        // 使用 requestAnimationFrame 让 UI 有机会更新
+        requestAnimationFrame(runNextChart);
     }
-    renderScoreChart('chartScore', topChartData);
-    var sourceData = groupBy(openData, 'matchedProf');
-    renderBarChart('chartSource', sourceData, '#06b6d4');
+    
+    requestAnimationFrame(runNextChart);
+    perfLog.mark('renderCharts 任务已调度');
 }
 
+// ============================================================
+// 图表渲染函数
+// ============================================================
 function renderScoreBarChart(domId, data, label, color) {
     var dom = document.getElementById(domId);
     if (!dom) return;
@@ -1526,13 +1715,14 @@ function renderProjectCenterChart(openData) {
     var c1Sw = [], c1Hw = [], c2Sw = [], c2Hw = [], cOtherSw = [], cOtherHw = [];
     for (var pi = 0; pi < projectIds.length; pi++) {
         var pid = projectIds[pi];
-        var d1 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center1; });
-        var d2 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center2; });
-        var dOther = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === centerOther; });
         var s1 = 0, h1 = 0, s2 = 0, h2 = 0, sOther = 0, hOther = 0;
-        for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore; h1 += d1[j].hwScore; }
-        for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore; h2 += d2[k].hwScore; }
-        for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore; hOther += dOther[l].hwScore; }
+        for (var i = 0; i < openData.length; i++) {
+            var d = openData[i];
+            if (d.projectId !== pid) continue;
+            if (d.matchedDept === center1) { s1 += d.swScore; h1 += d.hwScore; }
+            else if (d.matchedDept === center2) { s2 += d.swScore; h2 += d.hwScore; }
+            else { sOther += d.swScore; hOther += d.hwScore; }
+        }
         c1Sw.push(s1); c1Hw.push(h1);
         c2Sw.push(s2); c2Hw.push(h2);
         cOtherSw.push(sOther); cOtherHw.push(hOther);
