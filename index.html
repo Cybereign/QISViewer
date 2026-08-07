@@ -319,8 +319,48 @@ var personMap = {};
 var appConfig = null;
 var allCenters = [];
 var allProfessions = [];
-var configsLoaded = false;      // ★★★ 防止重复加载 ★★★
-var excelLoading = false;       // ★★★ 防止重复加载 ★★★
+var configsLoaded = false;
+var excelLoading = false;
+var displayConfig = {};
+
+// ============================================================
+// ★★★ applyDisplayConfig 必须在 loadAllConfigs 之前定义 ★★★
+// ============================================================
+function applyDisplayConfig() {
+    var modules = displayConfig.modules || {};
+    var map = {
+        header: 'header',
+        statusBar: 'statusBar',
+        filterBar: 'filterBar',
+        kpiGrid: 'kpiGrid',
+        statsTable: 'statsWrapper',
+        targetChart: 'targetChartContainer',
+        targetChart2: 'targetChartContainer2',
+        chartGrid: 'chartGrid',
+        tableWrapper: 'tableWrapper',
+        footerNote: 'footerNote',
+        fileUploadArea: 'fileUploadArea',
+        loadingIndicator: 'loadingIndicator',
+        errorMsg: 'errorMsg'
+    };
+    for (var k in map) {
+        if (map.hasOwnProperty(k)) {
+            var id = map[k];
+            var el = document.getElementById(id);
+            if (el) {
+                var show = modules[k] !== undefined ? modules[k] : true;
+                if (show) {
+                    el.classList.remove('module-hidden');
+                    el.style.cssText = '';
+                } else {
+                    el.classList.add('module-hidden');
+                    el.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:0!important;';
+                    el.innerHTML = '';
+                }
+            }
+        }
+    }
+}
 
 // ============================================================
 // 安全设置
@@ -759,10 +799,8 @@ function updateOwnerFilter(data) {
     var filterSelect = document.getElementById('ownerFilter');
     if (!filterSelect) return;
     
-    // 获取当前选中的值
     var currentValue = filterSelect.value;
     
-    // 收集所有责任人（按中心优先级排序）
     var ownerMap = {};
     for (var i = 0; i < data.length; i++) {
         var d = data[i];
@@ -785,23 +823,19 @@ function updateOwnerFilter(data) {
         }
     }
     
-    // 排序：两个中心的人优先
     ownerList.sort(function(a, b) {
         if (a.isCenter && !b.isCenter) return -1;
         if (!a.isCenter && b.isCenter) return 1;
         return a.name.localeCompare(b.name);
     });
     
-    // 重建下拉选项
     var html = '<option value="">全部人员</option>';
     for (var j = 0; j < ownerList.length; j++) {
         var o = ownerList[j];
-        var label = o.name;
-        html += '<option value="' + o.name + '">' + label + '</option>';
+        html += '<option value="' + o.name + '">' + o.name + '</option>';
     }
     filterSelect.innerHTML = html;
     
-    // 恢复选中的值
     if (currentValue) {
         filterSelect.value = currentValue;
     }
@@ -818,7 +852,6 @@ function applyOwnerFilter() {
     var ownerValue = filterSelect.value;
     var centerValue = centerSelect.value;
     
-    // 重新渲染表格
     renderTableWithFilter(currentData, ownerValue, centerValue);
 }
 
@@ -829,7 +862,6 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
     var tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
-    // 先按中心优先级排序
     var sortedData = data.slice().sort(function(a, b) {
         var aIsCenter = (a.matchedDept === '智能驾驶与座舱开发中心' || a.matchedDept === '智能电子电气开发中心');
         var bIsCenter = (b.matchedDept === '智能驾驶与座舱开发中心' || b.matchedDept === '智能电子电气开发中心');
@@ -838,7 +870,6 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         return a.id - b.id;
     });
     
-    // 应用筛选
     if (ownerFilter) {
         sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
     }
@@ -846,7 +877,6 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         sortedData = sortedData.filter(function(d) { return d.matchedDept === centerFilter; });
     }
     
-    // 更新记录数
     document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
     
     var display = sortedData.slice(0, 200);
@@ -860,7 +890,6 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         else if (isClosed) { rowClass = 'closed'; statusTag = '<span class="tag closed-tag">✅已关闭</span>'; }
         else { statusTag = '<span class="tag">-</span>'; }
         
-        // 中心优先级标记
         var isCenter = (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心');
         if (isCenter) rowClass += ' center-priority';
         
@@ -868,7 +897,6 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
         var showScore = isOpen;
         var color = d.matchedDept === '智能驾驶与座舱开发中心' ? '#1d4ed8' : d.matchedDept === '智能电子电气开发中心' ? '#7c3aed' : '#94a3b8';
         
-        // 责任人高亮
         var ownerDisplay = d.owner;
         if (isCenter) {
             ownerDisplay = '⭐ ' + d.owner;
@@ -1286,14 +1314,11 @@ function renderAll(data) {
 
     renderStatsTable(openData);
 
-    // 更新筛选下拉列表
     var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
     updateOwnerFilter(allData);
     
-    // 渲染目标达成率图表
     renderTargetCharts(openData);
     
-    // 渲染表格（带筛选）
     var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
     var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
     renderTableWithFilter(data, ownerFilter, centerFilter);
@@ -1329,7 +1354,7 @@ function renderCharts(openData) {
 }
 
 // ============================================================
-// 图表渲染函数（保持不变）
+// 图表渲染函数
 // ============================================================
 function renderScoreBarChart(domId, data, label, color) {
     var dom = document.getElementById(domId);
