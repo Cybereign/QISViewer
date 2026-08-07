@@ -385,7 +385,7 @@
             align-items: center;
             margin-bottom: 8px;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
         }
         .table-header h3 {
             font-size: 14px;
@@ -398,21 +398,21 @@
         .table-header .filter-group {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             flex-wrap: wrap;
         }
         .table-header .filter-group label {
-            font-size: 12px;
+            font-size: 11px;
             color: #94a3b8;
             white-space: nowrap;
         }
         .table-header .filter-group select {
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 6px;
             border: 1px solid #d1d9e6;
-            font-size: 12px;
+            font-size: 11px;
             background: white;
-            max-width: 160px;
+            max-width: 140px;
             cursor: pointer;
         }
         .table-header .filter-group select:focus {
@@ -659,7 +659,7 @@
         }
 
         .filter-group select {
-            min-width: 110px;
+            min-width: 90px;
         }
         .filter-group select:disabled {
             opacity: 0.5;
@@ -669,6 +669,10 @@
         @media (max-width: 1200px) {
             .chart-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+            .table-header .filter-group select {
+                max-width: 110px;
+                font-size: 10px;
             }
         }
         @media (max-width: 800px) {
@@ -686,7 +690,12 @@
                 justify-content: center;
             }
             .table-header .filter-group select {
-                max-width: 120px;
+                max-width: 100px;
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+            .table-header .filter-group label {
+                font-size: 10px;
             }
         }
         @media (max-width: 500px) {
@@ -694,8 +703,11 @@
                 grid-template-columns: 1fr;
             }
             .table-header .filter-group select {
-                max-width: 100px;
-                font-size: 11px;
+                max-width: 80px;
+                font-size: 9px;
+            }
+            .table-header .filter-group label {
+                font-size: 9px;
             }
         }
     </style>
@@ -795,28 +807,28 @@
             <!-- ===== 明细表格 ===== -->
             <div id="tableWrapper" class="table-wrapper">
                 <div class="table-header">
-                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
                         <h3><i class="fas fa-list-ul"></i> 缺陷明细</h3>
                         <div class="filter-group">
-                            <label>📁 项目:</label>
+                            <label>📁</label>
                             <select id="projectFilter" onchange="applyFilters()">
                                 <option value="">全部项目</option>
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label>📌 中心:</label>
+                            <label>📌</label>
                             <select id="centerFilter" onchange="applyFilters()">
                                 <option value="">全部中心</option>
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label>👤 人员:</label>
+                            <label>👤</label>
                             <select id="ownerFilter" onchange="applyFilters()">
                                 <option value="">全部人员</option>
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label>⭐ 等级:</label>
+                            <label>⭐</label>
                             <select id="importanceFilter" onchange="applyFilters()">
                                 <option value="">全部等级</option>
                                 <option value="S1">S1</option>
@@ -826,6 +838,17 @@
                                 <option value="A">A</option>
                                 <option value="B">B</option>
                                 <option value="C">C</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>📊</label>
+                            <select id="statusFilter" onchange="applyFilters()">
+                                <option value="">全部状态</option>
+                                <option value="1/5">1/5</option>
+                                <option value="2/5">2/5</option>
+                                <option value="3/5">3/5</option>
+                                <option value="4/5">4/5</option>
+                                <option value="5/5">5/5</option>
                             </select>
                         </div>
                     </div>
@@ -1369,21 +1392,23 @@
         }
 
         // ============================================================
-        // ★★★ 四级筛选联动更新 ★★★
+        // ★★★ 五级筛选联动更新 ★★★
         // ============================================================
         function updateFilterOptions(data) {
             var projectFilter = document.getElementById('projectFilter');
             var centerFilter = document.getElementById('centerFilter');
             var ownerFilter = document.getElementById('ownerFilter');
             var importanceFilter = document.getElementById('importanceFilter');
+            var statusFilter = document.getElementById('statusFilter');
 
-            if (!projectFilter || !centerFilter || !ownerFilter || !importanceFilter) return;
+            if (!projectFilter || !centerFilter || !ownerFilter || !importanceFilter || !statusFilter) return;
 
             // 保存当前选中值
             var currentProject = projectFilter.value;
             var currentCenter = centerFilter.value;
             var currentOwner = ownerFilter.value;
             var currentImportance = importanceFilter.value;
+            var currentStatus = statusFilter.value;
 
             // 1. 更新项目下拉
             var projectMap = {};
@@ -1418,7 +1443,6 @@
                     centerMap[d.matchedDept] = true;
                 }
             }
-            // 把两个主要中心放前面
             var priorityCenters = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
             var sortedCenters = [];
             for (var k = 0; k < priorityCenters.length; k++) {
@@ -1465,31 +1489,33 @@
                 ownerFilter.value = currentOwner;
             }
 
-            // 6. 更新等级下拉（固定选项，但根据数据可用性）
-            // 等级下拉保持固定选项，不需要动态更新
+            // 6. 等级下拉固定选项，不需要动态更新
+            // 7. 状态下拉固定选项，不需要动态更新
         }
 
         // ============================================================
-        // ★★★ 应用四级筛选 ★★★
+        // ★★★ 应用五级筛选 ★★★
         // ============================================================
         function applyFilters() {
             var projectFilter = document.getElementById('projectFilter');
             var centerFilter = document.getElementById('centerFilter');
             var ownerFilter = document.getElementById('ownerFilter');
             var importanceFilter = document.getElementById('importanceFilter');
+            var statusFilter = document.getElementById('statusFilter');
 
             var projectValue = projectFilter ? projectFilter.value : '';
             var centerValue = centerFilter ? centerFilter.value : '';
             var ownerValue = ownerFilter ? ownerFilter.value : '';
             var importanceValue = importanceFilter ? importanceFilter.value : '';
+            var statusValue = statusFilter ? statusFilter.value : '';
 
-            renderTableWithFilters(currentData, projectValue, centerValue, ownerValue, importanceValue);
+            renderTableWithFilters(currentData, projectValue, centerValue, ownerValue, importanceValue, statusValue);
         }
 
         // ============================================================
-        // ★★★ 带四级筛选的表格渲染 ★★★
+        // ★★★ 带五级筛选的表格渲染 ★★★
         // ============================================================
-        function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter, importanceFilter) {
+        function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter, importanceFilter, statusFilter) {
             var tbody = document.getElementById('tableBody');
             if (!tbody) return;
 
@@ -1514,6 +1540,9 @@
             }
             if (importanceFilter) {
                 sortedData = sortedData.filter(function(d) { return d.importance === importanceFilter; });
+            }
+            if (statusFilter) {
+                sortedData = sortedData.filter(function(d) { return d.improveStatus === statusFilter; });
             }
 
             document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
@@ -1730,7 +1759,6 @@
 
             var html = '';
 
-            // 定义每个项目的图表列表
             var chartConfigs = [
                 { id: 'targetDiff', title: '目标差值', icon: 'fa-bullseye', height: '260px', type: 'target' },
                 { id: 'statusSW', title: '主单状态 (软件分)', icon: 'fa-tasks', height: '200px', type: 'statusSW' },
@@ -1753,7 +1781,6 @@
                 var projectId = proj.id;
                 var projectName = proj.name;
 
-                // 检查是否有数据
                 var hasData = openData.some(function(d) { return d.projectId === projectId; });
                 if (!hasData) continue;
 
@@ -1778,7 +1805,6 @@
 
             container.innerHTML = html;
 
-            // 渲染每个项目的图表
             for (var pi2 = 0; pi2 < projects.length; pi2++) {
                 var proj2 = projects[pi2];
                 var projectId2 = proj2.id;
@@ -1912,7 +1938,6 @@
             var chart = echarts.init(dom);
             chartInstances[domId] = chart;
 
-            // 固化数据到闭包
             var chartData = {
                 categories: categories.slice(),
                 actualValues: actualValues.slice(),
@@ -2067,33 +2092,25 @@
         // ★★★ 渲染单个项目的其他图表 ★★★
         // ============================================================
         function renderProjectChartsData(projectId, projectData) {
-            // 主单状态 (软件分)
             var statusSW = groupBySum(projectData, 'mainStatus', 'swScore');
             renderScoreBarChart('chart_' + projectId + '_statusSW', statusSW, '软件分', '#3b82f6');
 
-            // 主单状态 (硬件分)
             var statusHW = groupBySum(projectData, 'mainStatus', 'hwScore');
             renderScoreBarChart('chart_' + projectId + '_statusHW', statusHW, '硬件分', '#10b981');
 
-            // 重要度分布 (软件分)
             var impSW = groupBySum(projectData, 'importance', 'swScore');
             renderScoreBarChart('chart_' + projectId + '_importanceSW', impSW, '软件分', '#3b82f6');
 
-            // 重要度分布 (硬件分)
             var impHW = groupBySum(projectData, 'importance', 'hwScore');
             renderScoreBarChart('chart_' + projectId + '_importanceHW', impHW, '硬件分', '#10b981');
 
-            // 匹配中心分布
             var deptData = groupBy(projectData, 'matchedDept');
             renderBarChart('chart_' + projectId + '_dept', deptData, '#8b5cf6');
 
-            // 各中心软件/硬件分值（保留一位小数）
             renderProjectCenterChartSingle('chart_' + projectId + '_projectCompare', projectData);
 
-            // ★★★ 缺陷评分甘特图（人员汇总TOP10）★★★
             renderGanttChartPersonSummary('chart_' + projectId + '_gantt', projectData);
 
-            // ★★★ 综合评分 Top10（按人员汇总，保留一位小数）★★★
             var ownerScoreMap = {};
             var ownerCountMap = {};
             for (var i = 0; i < projectData.length; i++) {
@@ -2112,7 +2129,6 @@
             }).slice(0, 10);
             renderScoreChart('chart_' + projectId + '_scoreTop', topData);
 
-            // 专业分布
             var sourceData = groupBy(projectData, 'matchedProf');
             renderBarChart('chart_' + projectId + '_source', sourceData, '#06b6d4');
         }
@@ -2605,11 +2621,9 @@
             );
 
             renderStatsTable(openData);
-
-            // 按项目分组渲染图表
             renderProjectCharts(openData);
 
-            // ★★★ 初始化四级筛选器 ★★★
+            // ★★★ 初始化五级筛选器 ★★★
             updateFilterOptions(data);
             applyFilters();
         }
