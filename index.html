@@ -191,11 +191,8 @@
         <div style="font-size:12px;color:#94a3b8;margin-top:4px;" id="fileNameDisplay"></div>
     </div>
 
-    <!-- ===== 加载指示器 ===== -->
-    <div id="loadingIndicator" class="loading hidden">
-        <i class="fas fa-spinner fa-pulse"></i>
-        <span id="loadingText">正在加载数据...</span>
-    </div>
+    <!-- ===== 加载/错误 ===== -->
+    <div id="loadingIndicator" class="loading hidden"><i class="fas fa-spinner fa-pulse"></i> 正在解析数据...</div>
     <div id="errorMsg" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i><p id="errorText"></p></div>
 
     <!-- ===== 内容区域 ===== -->
@@ -276,21 +273,18 @@
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <h3><i class="fas fa-list-ul"></i> 缺陷明细</h3>
                     <div class="filter-group">
-                        <label>📁 项目:</label>
-                        <select id="projectFilter" onchange="applyFilters()">
-                            <option value="">全部项目</option>
+                        <label>👤 筛选:</label>
+                        <select id="ownerFilter" onchange="applyOwnerFilter()">
+                            <option value="">全部人员</option>
                         </select>
                     </div>
                     <div class="filter-group">
                         <label>📌 中心:</label>
-                        <select id="centerFilter" onchange="applyFilters()">
+                        <select id="centerFilter" onchange="applyOwnerFilter()">
                             <option value="">全部中心</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>👤 人员:</label>
-                        <select id="ownerFilter" onchange="applyFilters()">
-                            <option value="">全部人员</option>
+                            <option value="智能驾驶与座舱开发中心">智能驾驶与座舱开发中心</option>
+                            <option value="智能电子电气开发中心">智能电子电气开发中心</option>
+                            <option value="其他中心">其他中心</option>
                         </select>
                     </div>
                 </div>
@@ -312,39 +306,8 @@
 
 <script>
 // ============================================================
-// ★★★ 性能日志开关 ★★★
+// ★★★ 所有配置从 JSON 加载 ★★★
 // ============================================================
-var ENABLE_PERF_LOG = true;  // 改为 false 可关闭所有性能日志
-
-// ============================================================
-// ★★★ 性能日志工具 ★★★
-// ============================================================
-var perfLog = {
-    startTime: Date.now(),
-    marks: {},
-    enabled: ENABLE_PERF_LOG,
-    
-    mark: function(name) {
-        if (!this.enabled) return;
-        var now = Date.now();
-        var elapsed = now - this.startTime;
-        this.marks[name] = { time: now, elapsed: elapsed };
-        console.log('⏱️ [' + elapsed + 'ms] ' + name);
-        return elapsed;
-    },
-    
-    summary: function() {
-        if (!this.enabled) return;
-        console.log('========== 性能摘要 ==========');
-        var keys = Object.keys(this.marks);
-        for (var i = 0; i < keys.length; i++) {
-            var k = keys[i];
-            console.log('  ' + k + ': ' + this.marks[k].elapsed + 'ms');
-        }
-        console.log('总耗时: ' + (Date.now() - this.startTime) + 'ms');
-        console.log('===============================');
-    }
-};
 
 // ============================================================
 // 全局状态
@@ -359,23 +322,8 @@ var excelLoading = false;
 var displayConfig = {};
 var configLoaded = { project: false, person: false, display: false };
 
-// 缓存分组数据，避免重复计算
-var cachedGroups = {};
-
 // ============================================================
-// 安全设置
-// ============================================================
-function safeSetText(id, text) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = text;
-}
-function safeSetHTML(id, html) {
-    var el = document.getElementById(id);
-    if (el) el.innerHTML = html;
-}
-
-// ============================================================
-// applyDisplayConfig
+// ★★★ applyDisplayConfig ★★★
 // ============================================================
 function applyDisplayConfig() {
     var modules = displayConfig.modules || {};
@@ -414,18 +362,28 @@ function applyDisplayConfig() {
 }
 
 // ============================================================
-// 配置加载
+// 安全设置
+// ============================================================
+function safeSetText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+function safeSetHTML(id, html) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+// ============================================================
+// ★★★ 配置加载 ★★★
 // ============================================================
 function loadAllConfigs() {
-    perfLog.mark('loadAllConfigs 开始');
-    
+    // 1. 加载 projectConfig.json
     fetch('projectConfig.json?t=' + Date.now())
         .then(function(res) {
             if (!res.ok) throw new Error('projectConfig.json 不存在');
             return res.json();
         })
         .then(function(data) {
-            perfLog.mark('projectConfig.json 加载完成');
             appConfig = data;
             configLoaded.project = true;
             safeSetText('swWeightStatus', '已配置');
@@ -443,13 +401,13 @@ function loadAllConfigs() {
             showError('projectConfig.json 加载失败: ' + err.message);
         });
 
+    // 2. 加载 personConfig.json
     fetch('personConfig.json?t=' + Date.now())
         .then(function(res) {
             if (!res.ok) throw new Error('personConfig.json 不存在');
             return res.json();
         })
         .then(function(data) {
-            perfLog.mark('personConfig.json 加载完成');
             buildPersonMap(data);
             configLoaded.person = true;
             var count = Object.keys(personMap).length;
@@ -464,13 +422,13 @@ function loadAllConfigs() {
             showError('personConfig.json 加载失败: ' + err.message);
         });
 
+    // 3. 加载 displayConfig.json
     fetch('displayConfig.json?t=' + Date.now())
         .then(function(res) {
             if (!res.ok) throw new Error('displayConfig.json 不存在');
             return res.json();
         })
         .then(function(data) {
-            perfLog.mark('displayConfig.json 加载完成');
             displayConfig = data;
             configLoaded.display = true;
             applyDisplayConfig();
@@ -486,16 +444,13 @@ function loadAllConfigs() {
         });
 }
 
+// ★★★ tryStartApp ★★★
 function checkAllConfigsLoaded() {
     if (configLoaded.project && configLoaded.person && configLoaded.display) {
-        perfLog.mark('所有配置加载完成');
-        console.log('✅ 所有配置加载完成，开始加载数据');
+        console.log('✅ 所有配置加载完成');
         updateProjectBadges();
         if (!window._appStarted) {
             window._appStarted = true;
-            document.getElementById('contentArea').classList.remove('hidden');
-            document.getElementById('contentArea').style.display = 'block';
-            showLoading('正在加载 Excel 数据...');
             autoLoadExcel();
         }
     }
@@ -548,6 +503,9 @@ function updateProjectBadges() {
     safeSetText('projectOtherBadge', '其他: 0');
 }
 
+// ============================================================
+// 获取匹配中心/专业
+// ============================================================
 function getMatchedCenter(dept) {
     if (!dept || dept === '' || dept === '未知') return '其他中心';
     for (var i = 0; i < allCenters.length; i++) {
@@ -564,53 +522,34 @@ function getMatchedProfession(prof) {
     return '其他专业';
 }
 
-function showLoading(text) {
-    var el = document.getElementById('loadingIndicator');
-    el.classList.remove('hidden');
-    el.style.display = 'block';
-    document.getElementById('loadingText').textContent = text || '正在加载...';
-}
-
-function hideLoading() {
-    var el = document.getElementById('loadingIndicator');
-    el.classList.add('hidden');
-    el.style.display = 'none';
-}
-
 // ============================================================
-// 自动加载 Excel
+// ★★★ 自动加载 Excel ★★★
 // ============================================================
 function autoLoadExcel() {
-    if (excelLoading) {
-        console.log('⏳ 加载正在进行中，跳过...');
-        return;
-    }
-    perfLog.mark('autoLoadExcel 开始');
+    if (excelLoading) return;
     excelLoading = true;
-    console.log('🔍 开始查找 Excel 文件...');
 
-    fetch('data.xls', { cache: 'reload' })
+    // 显示加载状态
+    document.getElementById('loadingIndicator').classList.remove('hidden');
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('contentArea').classList.add('hidden');
+    document.getElementById('contentArea').style.display = 'none';
+
+    fetch('data.xls')
         .then(function(res) {
-            perfLog.mark('fetch data.xls 响应');
             if (res.ok) {
-                console.log('✅ 找到 data.xls');
                 return res.arrayBuffer().then(function(buffer) {
-                    perfLog.mark('data.xls 加载完成, 大小: ' + buffer.byteLength + ' bytes');
+                    console.log('✅ 自动加载 data.xls 成功');
                     var wb = XLSX.read(buffer, { type: 'array' });
-                    perfLog.mark('XLSX.read 完成');
                     processWorkbook(wb, 'data.xls');
                 });
             } else {
-                console.log('ℹ️ data.xls 不存在，尝试 data.xlsx');
                 return fetch('data.xlsx', { cache: 'reload' })
                     .then(function(res2) {
-                        perfLog.mark('fetch data.xlsx 响应');
                         if (res2.ok) {
-                            console.log('✅ 找到 data.xlsx');
                             return res2.arrayBuffer().then(function(buffer) {
-                                perfLog.mark('data.xlsx 加载完成, 大小: ' + buffer.byteLength + ' bytes');
+                                console.log('✅ 自动加载 data.xlsx 成功');
                                 var wb = XLSX.read(buffer, { type: 'array' });
-                                perfLog.mark('XLSX.read 完成');
                                 processWorkbook(wb, 'data.xlsx');
                             });
                         } else {
@@ -619,38 +558,70 @@ function autoLoadExcel() {
                     });
             }
         })
-        .catch(function(err) {
-            perfLog.mark('autoLoadExcel 失败');
-            console.log('ℹ️ 未找到 data.xlsx 或 data.xls:', err.message);
-            excelLoading = false;
-            hideLoading();
+        .catch(function() {
+            console.log('ℹ️ 未找到 data.xlsx 或 data.xls，显示手动选择界面');
             showManualSelect();
-            perfLog.summary();
         });
 }
 
+function showManualSelect() {
+    document.getElementById('fileUploadArea').classList.remove('hidden');
+    document.getElementById('fileUploadArea').style.display = 'block';
+    document.getElementById('contentArea').classList.remove('hidden');
+    document.getElementById('contentArea').style.display = 'block';
+    document.getElementById('loadingIndicator').classList.add('hidden');
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
+    document.getElementById('dataStatus').textContent = '请选择文件';
+    safeSetText('totalCount', '0');
+    excelLoading = false;
+}
+
 // ============================================================
-// ★★★ 优化后的 processWorkbook ★★★
+// 手动选择 Excel
 // ============================================================
+function handleFileSelect(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    if (!appConfig || Object.keys(personMap).length === 0) {
+        alert('配置尚未加载完成，请稍候再试。');
+        return;
+    }
+
+    safeSetText('fileNameDisplay', '📄 ' + file.name);
+    loadExcelFile(file);
+}
+
+function loadExcelFile(file) {
+    document.getElementById('loadingIndicator').classList.remove('hidden');
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('contentArea').classList.add('hidden');
+    document.getElementById('contentArea').style.display = 'none';
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = new Uint8Array(e.target.result);
+            var wb = XLSX.read(data, { type: 'array' });
+            processWorkbook(wb, file.name);
+        } catch (err) {
+            showError('解析失败: ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 function processWorkbook(wb, fileName) {
-    perfLog.mark('processWorkbook 开始');
-    
     var sheet = wb.Sheets[wb.SheetNames[0]];
-    perfLog.mark('获取 Sheet');
-    
     var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    perfLog.mark('sheet_to_json 完成, 行数: ' + json.length);
-    
     if (!json || json.length === 0) {
         showError('Excel 文件为空');
-        excelLoading = false;
-        hideLoading();
         return;
     }
 
     var headers = Object.keys(json[0]);
     console.log('✅ 检测到列名:', headers);
-    perfLog.mark('检测列名完成');
 
     var serialCol = null, statusCol = null, ownerCol = null, importanceCol = null, descCol = null, dateCol = null, mainStatusCol = null;
     for (var i = 0; i < headers.length; i++) {
@@ -666,15 +637,9 @@ function processWorkbook(wb, fileName) {
     console.log('📌 责任人列:', ownerCol || '未找到');
 
     var filterValues = appConfig.statusFilter.values || ['1/5', '2/5', '3/5', '4/5', '5/5'];
+
     var records = [];
-    var totalRows = json.length;
-    
-    perfLog.mark('开始遍历数据, 总行数: ' + totalRows);
-    
-    // 缓存 project 匹配结果，避免重复匹配
-    var projectCache = {};
-    
-    for (var idx = 0; idx < totalRows; idx++) {
+    for (var idx = 0; idx < json.length; idx++) {
         var row = json[idx];
         var get = function(names) {
             for (var n = 0; n < names.length; n++) {
@@ -699,12 +664,7 @@ function processWorkbook(wb, fileName) {
         var isOpen = (improveStatus === '1/5' || improveStatus === '2/5' || improveStatus === '3/5' || improveStatus === '4/5');
         var isClosed = (improveStatus === '5/5');
 
-        // 使用缓存的项目匹配
-        var project = projectCache[serialNo];
-        if (project === undefined) {
-            project = matchProject(serialNo);
-            projectCache[serialNo] = project;
-        }
+        var project = matchProject(serialNo);
         var projectName = project ? project.name : '其他';
         var projectId = project ? project.id : 'other';
 
@@ -724,7 +684,7 @@ function processWorkbook(wb, fileName) {
         }
 
         records.push({
-            id: records.length + 1,
+            id: idx + 1,
             mainStatus: mainStatus || '未知',
             improveStatus: improveStatus || '未知',
             serialNo: serialNo || '未知',
@@ -746,26 +706,34 @@ function processWorkbook(wb, fileName) {
     }
 
     currentData = records;
-    perfLog.mark('数据遍历完成, 记录数: ' + records.length);
-    console.log('✅ 解析完成，共 ' + records.length + ' 条记录');
 
     document.getElementById('fileUploadArea').classList.add('hidden');
     document.getElementById('fileUploadArea').style.display = 'none';
+    document.getElementById('contentArea').classList.remove('hidden');
+    document.getElementById('contentArea').style.display = 'block';
+    document.getElementById('loadingIndicator').classList.add('hidden');
+    document.getElementById('loadingIndicator').style.display = 'none';
     document.getElementById('errorMsg').classList.add('hidden');
-    hideLoading();
 
     safeSetText('fileInfo', '📊 ' + fileName + ' · ' + records.length + ' 条');
     safeSetText('dataStatus', '已加载');
     safeSetText('totalCount', records.length);
 
     excelLoading = false;
-    
-    // 清空缓存
-    cachedGroups = {};
-    
     renderAll(records);
 }
 
+function showError(msg) {
+    document.getElementById('loadingIndicator').classList.add('hidden');
+    document.getElementById('errorMsg').classList.remove('hidden');
+    safeSetText('errorText', msg);
+    document.getElementById('contentArea').classList.add('hidden');
+    excelLoading = false;
+}
+
+// ============================================================
+// 项目匹配
+// ============================================================
 function matchProject(serialNo) {
     if (!serialNo || !appConfig) return null;
     var projects = appConfig.projectConfig.projects || [];
@@ -775,6 +743,9 @@ function matchProject(serialNo) {
     return null;
 }
 
+// ============================================================
+// 计算分值
+// ============================================================
 function calcScores(importance) {
     if (!appConfig) return { swScore: 0, hwScore: 0, totalScore: 0 };
     var sw = appConfig.weightConfigs.software.weights || {};
@@ -784,65 +755,22 @@ function calcScores(importance) {
     return { swScore: swScore, hwScore: hwScore, totalScore: swScore + hwScore };
 }
 
+// ============================================================
+// 人员匹配
+// ============================================================
 function getPersonInfo(owner) {
     if (!owner || owner === '' || owner === '未知') return null;
     if (personMap[owner]) return personMap[owner];
     return null;
 }
 
-function showManualSelect() {
-    document.getElementById('fileUploadArea').classList.remove('hidden');
-    document.getElementById('fileUploadArea').style.display = 'block';
-    document.getElementById('fileInfo').innerHTML = '<i class="fas fa-file-excel"></i> 请选择文件';
-    document.getElementById('dataStatus').textContent = '请选择文件';
-    safeSetText('totalCount', '0');
-    hideLoading();
-}
-
-function showError(msg) {
-    hideLoading();
-    document.getElementById('errorMsg').classList.remove('hidden');
-    safeSetText('errorText', msg);
-    document.getElementById('contentArea').classList.add('hidden');
-}
-
-function handleFileSelect(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-    if (!appConfig || Object.keys(personMap).length === 0) {
-        alert('配置尚未加载完成，请稍候再试。');
-        return;
-    }
-    safeSetText('fileNameDisplay', '📄 ' + file.name);
-    loadExcelFile(file);
-}
-
-function loadExcelFile(file) {
-    showLoading('正在解析 ' + file.name + '...');
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            var data = new Uint8Array(e.target.result);
-            var wb = XLSX.read(data, { type: 'array' });
-            processWorkbook(wb, file.name);
-        } catch (err) {
-            showError('解析失败: ' + err.message);
-            hideLoading();
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
 // ============================================================
-// ★★★ 优化的分组工具（使用缓存）★★★
+// 分组工具
 // ============================================================
-function groupByCached(data, key, cacheKey) {
-    var cache = cachedGroups[cacheKey];
-    if (cache) return cache;
-    
+function groupBy(arr, key) {
     var map = {};
-    for (var i = 0; i < data.length; i++) {
-        var v = data[i][key] || '未分类';
+    for (var i = 0; i < arr.length; i++) {
+        var v = arr[i][key] || '未分类';
         v = String(v);
         if (map[v] === undefined) map[v] = 0;
         map[v]++;
@@ -852,136 +780,92 @@ function groupByCached(data, key, cacheKey) {
         if (map.hasOwnProperty(k)) result.push([k, map[k]]);
     }
     result.sort(function(a, b) { return b[1] - a[1]; });
-    
-    cachedGroups[cacheKey] = result;
     return result;
 }
 
-function groupBySumCached(data, key, sumKey, cacheKey) {
-    var cache = cachedGroups[cacheKey];
-    if (cache) return cache;
-    
+function groupBySum(arr, key, sumKey) {
     var map = {};
-    for (var i = 0; i < data.length; i++) {
-        var v = data[i][key] || '未分类';
+    for (var i = 0; i < arr.length; i++) {
+        var v = arr[i][key] || '未分类';
         v = String(v);
         if (map[v] === undefined) map[v] = 0;
-        map[v] += (data[i][sumKey] || 0);
+        map[v] += (arr[i][sumKey] || 0);
     }
     var result = [];
     for (var k in map) {
         if (map.hasOwnProperty(k)) result.push([k, map[k]]);
     }
     result.sort(function(a, b) { return b[1] - a[1]; });
-    
-    cachedGroups[cacheKey] = result;
     return result;
 }
 
 // ============================================================
-// 筛选器更新
+// ★★★ 更新人员筛选下拉列表 ★★★
 // ============================================================
-function updateFilterOptions(data) {
-    var projectFilter = document.getElementById('projectFilter');
-    if (projectFilter) {
-        var currentProject = projectFilter.value;
-        var projectMap = {};
-        for (var i = 0; i < data.length; i++) {
-            var d = data[i];
-            if (d.projectName && d.projectName !== '') {
-                projectMap[d.projectName] = true;
+function updateOwnerFilter(data) {
+    var filterSelect = document.getElementById('ownerFilter');
+    if (!filterSelect) return;
+
+    var currentValue = filterSelect.value;
+
+    var ownerMap = {};
+    for (var i = 0; i < data.length; i++) {
+        var d = data[i];
+        if (d.owner && d.owner !== '' && d.owner !== '未知') {
+            var key = d.owner;
+            if (!ownerMap[key]) {
+                ownerMap[key] = {
+                    name: key,
+                    dept: d.matchedDept,
+                    isCenter: (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心')
+                };
             }
-        }
-        var projectList = Object.keys(projectMap).sort();
-        var html = '<option value="">全部项目</option>';
-        for (var j = 0; j < projectList.length; j++) {
-            html += '<option value="' + projectList[j] + '">' + projectList[j] + '</option>';
-        }
-        projectFilter.innerHTML = html;
-        if (currentProject && projectMap[currentProject]) {
-            projectFilter.value = currentProject;
         }
     }
 
-    var centerFilter = document.getElementById('centerFilter');
-    if (centerFilter) {
-        var currentCenter = centerFilter.value;
-        var centerMap = {};
-        for (var i = 0; i < data.length; i++) {
-            var d = data[i];
-            if (d.matchedDept && d.matchedDept !== '') {
-                centerMap[d.matchedDept] = true;
-            }
-        }
-        var priorityCenters = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
-        var sortedCenters = [];
-        for (var k = 0; k < priorityCenters.length; k++) {
-            if (centerMap[priorityCenters[k]]) {
-                sortedCenters.push(priorityCenters[k]);
-                delete centerMap[priorityCenters[k]];
-            }
-        }
-        var otherCenters = Object.keys(centerMap).sort();
-        sortedCenters = sortedCenters.concat(otherCenters);
-        var html = '<option value="">全部中心</option>';
-        for (var j = 0; j < sortedCenters.length; j++) {
-            html += '<option value="' + sortedCenters[j] + '">' + sortedCenters[j] + '</option>';
-        }
-        centerFilter.innerHTML = html;
-        if (currentCenter && centerMap[currentCenter]) {
-            centerFilter.value = currentCenter;
+    var ownerList = [];
+    for (var k in ownerMap) {
+        if (ownerMap.hasOwnProperty(k)) {
+            ownerList.push(ownerMap[k]);
         }
     }
 
-    var ownerFilter = document.getElementById('ownerFilter');
-    if (ownerFilter) {
-        var currentOwner = ownerFilter.value;
-        var ownerMap = {};
-        for (var i = 0; i < data.length; i++) {
-            var d = data[i];
-            if (d.owner && d.owner !== '' && d.owner !== '未知') {
-                var isPriority = (d.matchedDept === '智能驾驶与座舱开发中心' || d.matchedDept === '智能电子电气开发中心');
-                if (!ownerMap[d.owner]) {
-                    ownerMap[d.owner] = { name: d.owner, priority: isPriority };
-                }
-            }
-        }
-        var ownerList = [];
-        for (var key in ownerMap) {
-            if (ownerMap.hasOwnProperty(key)) {
-                ownerList.push(ownerMap[key]);
-            }
-        }
-        ownerList.sort(function(a, b) {
-            if (a.priority && !b.priority) return -1;
-            if (!a.priority && b.priority) return 1;
-            return a.name.localeCompare(b.name);
-        });
-        var html = '<option value="">全部人员</option>';
-        for (var j = 0; j < ownerList.length; j++) {
-            html += '<option value="' + ownerList[j].name + '">' + (ownerList[j].priority ? '⭐ ' : '') + ownerList[j].name + '</option>';
-        }
-        ownerFilter.innerHTML = html;
-        if (currentOwner && ownerMap[currentOwner]) {
-            ownerFilter.value = currentOwner;
-        }
+    ownerList.sort(function(a, b) {
+        if (a.isCenter && !b.isCenter) return -1;
+        if (!a.isCenter && b.isCenter) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    var html = '<option value="">全部人员</option>';
+    for (var j = 0; j < ownerList.length; j++) {
+        var o = ownerList[j];
+        html += '<option value="' + o.name + '">' + o.name + '</option>';
+    }
+    filterSelect.innerHTML = html;
+
+    if (currentValue) {
+        filterSelect.value = currentValue;
     }
 }
 
-function applyFilters() {
-    var projectFilter = document.getElementById('projectFilter');
-    var centerFilter = document.getElementById('centerFilter');
-    var ownerFilter = document.getElementById('ownerFilter');
-    var projectValue = projectFilter ? projectFilter.value : '';
-    var centerValue = centerFilter ? centerFilter.value : '';
-    var ownerValue = ownerFilter ? ownerFilter.value : '';
-    renderTableWithFilters(currentData, projectValue, centerValue, ownerValue);
+// ============================================================
+// ★★★ 应用人员筛选 ★★★
+// ============================================================
+function applyOwnerFilter() {
+    var filterSelect = document.getElementById('ownerFilter');
+    var centerSelect = document.getElementById('centerFilter');
+    if (!filterSelect || !centerSelect) return;
+
+    var ownerValue = filterSelect.value;
+    var centerValue = centerSelect.value;
+
+    renderTableWithFilter(currentData, ownerValue, centerValue);
 }
 
 // ============================================================
-// 渲染表格（带筛选）
+// ★★★ 带筛选的表格渲染 ★★★
 // ============================================================
-function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter) {
+function renderTableWithFilter(data, ownerFilter, centerFilter) {
     var tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
@@ -993,14 +877,11 @@ function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter) 
         return a.id - b.id;
     });
 
-    if (projectFilter) {
-        sortedData = sortedData.filter(function(d) { return d.projectName === projectFilter; });
+    if (ownerFilter) {
+        sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
     }
     if (centerFilter) {
         sortedData = sortedData.filter(function(d) { return d.matchedDept === centerFilter; });
-    }
-    if (ownerFilter) {
-        sortedData = sortedData.filter(function(d) { return d.owner === ownerFilter; });
     }
 
     document.getElementById('recordCount').textContent = '共 ' + sortedData.length + ' 条';
@@ -1052,10 +933,9 @@ function renderTableWithFilters(data, projectFilter, centerFilter, ownerFilter) 
 }
 
 // ============================================================
-// ★★★ 优化后的渲染统计表格 ★★★
+// ★★★ 渲染整体统计表格 ★★★
 // ============================================================
 function renderStatsTable(openData) {
-    perfLog.mark('renderStatsTable 开始');
     var tbody = document.getElementById('statsBody');
     if (!tbody) return;
 
@@ -1072,20 +952,18 @@ function renderStatsTable(openData) {
     projectIds.push('other');
     projectNames['other'] = '其他项目';
 
-    // 使用 Map 加速分组
     var centerMap = {};
     for (var i = 0; i < openData.length; i++) {
         var d = openData[i];
         var center = d.matchedDept || '其他中心';
         var prof = d.matchedProf || '其他专业';
-        var key = center + '|' + prof;
         if (!centerMap[center]) {
             centerMap[center] = {};
         }
         if (!centerMap[center][prof]) {
-            centerMap[center][prof] = [];
+            centerMap[center][prof] = 0;
         }
-        centerMap[center][prof].push(d);
+        centerMap[center][prof]++;
     }
 
     var centerList = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
@@ -1115,39 +993,32 @@ function renderStatsTable(openData) {
             '<td colspan="14" style="color:' + projectColor + ';">📁 ' + projectName + '（共 ' + projectData.length + ' 条）</td>' +
             '</tr>';
 
-        // 构建项目内的中心-专业数据
-        var projCenterMap = {};
-        for (var di = 0; di < projectData.length; di++) {
-            var d = projectData[di];
-            var center = d.matchedDept || '其他中心';
-            var prof = d.matchedProf || '其他专业';
-            var key = center + '|' + prof;
-            if (!projCenterMap[center]) {
-                projCenterMap[center] = {};
-            }
-            if (!projCenterMap[center][prof]) {
-                projCenterMap[center][prof] = [];
-            }
-            projCenterMap[center][prof].push(d);
-        }
-
         for (var ci = 0; ci < centerList.length; ci++) {
             var center = centerList[ci];
-            var profDataMap = projCenterMap[center];
-            if (!profDataMap) continue;
+            var centerData = projectData.filter(function(d) { return d.matchedDept === center; });
+            if (centerData.length === 0) continue;
 
-            var profs = Object.keys(profDataMap).sort();
+            var profs = [];
+            var profSet = {};
+            for (var di = 0; di < centerData.length; di++) {
+                var profName = centerData[di].matchedProf || '其他专业';
+                if (!profSet[profName]) {
+                    profSet[profName] = true;
+                    profs.push(profName);
+                }
+            }
+            profs.sort();
 
             for (var pri = 0; pri < profs.length; pri++) {
                 var prof = profs[pri];
-                var items = profDataMap[prof];
-                if (!items || items.length === 0) continue;
+                var profData = centerData.filter(function(d) { return d.matchedProf === prof; });
+                if (profData.length === 0) continue;
 
-                var count = items.length;
+                var count = profData.length;
                 var sw = 0, hw = 0, total = 0;
                 var s1 = 0, s2 = 0, s3 = 0, s4 = 0, a = 0, b = 0, c = 0;
-                for (var ii = 0; ii < items.length; ii++) {
-                    var d = items[ii];
+                for (var di2 = 0; di2 < profData.length; di2++) {
+                    var d = profData[di2];
                     sw += d.swScore;
                     hw += d.hwScore;
                     total += d.totalScore;
@@ -1185,16 +1056,15 @@ function renderStatsTable(openData) {
     }
     tbody.innerHTML = html;
     document.getElementById('statsCount').textContent = '共 ' + totalCount + ' 条';
-    perfLog.mark('renderStatsTable 完成');
 }
 
 // ============================================================
-// ★★★ 目标差值图表（优化版）★★★
+// ★★★ 目标差值图表（修复 Tooltip 显示和图表大小问题）★★★
 // ============================================================
 function renderTargetCharts(openData) {
-    perfLog.mark('renderTargetCharts 开始');
     var modules = displayConfig.modules || {};
     if (modules.targetChart === false) return;
+
     if (!appConfig || !appConfig.stageTarget) {
         console.warn('⚠️ stageTarget 配置不存在');
         return;
@@ -1203,6 +1073,7 @@ function renderTargetCharts(openData) {
     var projects = appConfig.projectConfig.projects || [];
     var stages = appConfig.stageTarget.stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+
     var chartContainers = ['chartTarget1', 'chartTarget2'];
     var containerIndex = 0;
 
@@ -1218,30 +1089,32 @@ function renderTargetCharts(openData) {
         var domId = chartContainers[containerIndex];
         var dom = document.getElementById(domId);
         if (!dom) {
+            console.warn('⚠️ 找不到图表容器:', domId);
             containerIndex++;
             continue;
         }
 
+        // ★★★ 动态更新图表标题 ★★★
         var titleEl = dom.closest('.chart-card').querySelector('.chart-title');
         if (titleEl) {
             titleEl.innerHTML = '<i class="fas fa-bullseye"></i> ' + projectName + ' 目标差值';
         }
 
+        // ★★★ 先调整容器尺寸，确保图表正常显示 ★★★
+        dom.style.width = '100%';
+        dom.style.height = '260px';
+
         if (chartInstances[domId]) {
             chartInstances[domId].dispose();
+            delete chartInstances[domId];
         }
 
         var chart = echarts.init(dom);
         chartInstances[domId] = chart;
 
-        // 预过滤项目数据
-        var projectData = [];
-        for (var di = 0; di < openData.length; di++) {
-            if (openData[di].projectId === projectId) {
-                projectData.push(openData[di]);
-            }
-        }
+        var projectData = openData.filter(function(d) { return d.projectId === projectId; });
 
+        // ★★★ 每个图表独立的数据变量 ★★★
         var categories = [];
         var actualValues = [];
         var targetValues = [];
@@ -1274,22 +1147,6 @@ function renderTargetCharts(openData) {
             continue;
         }
 
-        // 构建中心-专业数据映射
-        var centerProfMap = {};
-        for (var di2 = 0; di2 < projectData.length; di2++) {
-            var d = projectData[di2];
-            var center = d.matchedDept;
-            var prof = d.matchedProf;
-            var key = center + '|' + prof;
-            if (!centerProfMap[center]) {
-                centerProfMap[center] = {};
-            }
-            if (!centerProfMap[center][prof]) {
-                centerProfMap[center][prof] = [];
-            }
-            centerProfMap[center][prof].push(d);
-        }
-
         for (var ci = 0; ci < centerNames.length; ci++) {
             var cName = centerNames[ci];
             var cConfig = stage.centers[cName];
@@ -1297,16 +1154,15 @@ function renderTargetCharts(openData) {
 
             var profs = cConfig.professions || {};
             var target = cConfig.target || 0;
-            var centerItems = centerProfMap[cName] || {};
+            var centerData = projectData.filter(function(d) { return d.matchedDept === cName; });
 
-            // 计算各专业实际值
             var profActuals = {};
             for (var profName in profs) {
                 if (profs.hasOwnProperty(profName)) {
-                    var items = centerItems[profName] || [];
+                    var profData = centerData.filter(function(d) { return d.matchedProf === profName; });
                     var profActual = 0;
-                    for (var ii = 0; ii < items.length; ii++) {
-                        profActual += items[ii].swScore;
+                    for (var di = 0; di < profData.length; di++) {
+                        profActual += profData[di].swScore;
                     }
                     profActuals[profName] = profActual;
                 }
@@ -1344,11 +1200,13 @@ function renderTargetCharts(openData) {
             continue;
         }
 
-        // 固化数据到闭包
-        var tooltipData = {
+        // ★★★ 关键修复：为当前图表创建独立的数据副本，避免被后续循环覆盖 ★★★
+        var chartData = {
             categories: categories.slice(),
             actualValues: actualValues.slice(),
-            targetValues: targetValues.slice()
+            targetValues: targetValues.slice(),
+            greenParts: greenParts.slice(),
+            redParts: redParts.slice()
         };
 
         chart.setOption({
@@ -1356,9 +1214,10 @@ function renderTargetCharts(openData) {
                 trigger: 'axis',
                 axisPointer: { type: 'shadow' },
                 formatter: function(params) {
-                    var cats = tooltipData.categories;
-                    var actuals = tooltipData.actualValues;
-                    var targets = tooltipData.targetValues;
+                    // ★★★ 使用当前图表独立的数据副本 ★★★
+                    var cats = chartData.categories;
+                    var actuals = chartData.actualValues;
+                    var targets = chartData.targetValues;
 
                     var idx = 0;
                     for (var p = 0; p < params.length; p++) {
@@ -1420,7 +1279,10 @@ function renderTargetCharts(openData) {
                     stack: 'total',
                     data: greenParts,
                     barWidth: '40%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#10b981'
+                    },
                     label: {
                         show: true,
                         position: 'inside',
@@ -1438,7 +1300,10 @@ function renderTargetCharts(openData) {
                     stack: 'total',
                     data: redParts,
                     barWidth: '40%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#ef4444'
+                    },
                     label: {
                         show: true,
                         position: 'inside',
@@ -1455,7 +1320,11 @@ function renderTargetCharts(openData) {
                     type: 'bar',
                     data: targetValues,
                     barWidth: '40%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
+                    itemStyle: {
+                        borderRadius: [3, 3, 0, 0],
+                        color: '#94a3b8',
+                        opacity: 0.3
+                    },
                     label: {
                         show: true,
                         position: 'top',
@@ -1470,36 +1339,38 @@ function renderTargetCharts(openData) {
             ]
         });
 
-        var resizeHandler = function() { chart.resize(); };
+        // ★★★ 图表渲染完成后调用 resize 确保正确尺寸 ★★★
+        setTimeout(function() {
+            if (chart && !chart.isDisposed()) {
+                chart.resize();
+            }
+        }, 100);
+
+        var resizeHandler = function() {
+            if (chart && !chart.isDisposed()) {
+                chart.resize();
+            }
+        };
         window.removeEventListener('resize', resizeHandler);
         window.addEventListener('resize', resizeHandler);
         chart._resizeHandler = resizeHandler;
+
         containerIndex++;
     }
-    perfLog.mark('renderTargetCharts 完成');
 }
 
 // ============================================================
-// ★★★ 优化的渲染主函数 ★★★
+// 渲染主函数
 // ============================================================
 function renderAll(data) {
-    perfLog.mark('renderAll 开始');
-    
     if (!data || data.length === 0) {
         safeSetHTML('kpiGrid', '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#94a3b8;">暂无数据</div>');
         return;
     }
 
-    // 预过滤数据
-    var openData = [];
-    var closedData = [];
-    var trackedData = [];
-    for (var i = 0; i < data.length; i++) {
-        var d = data[i];
-        if (d.isOpen) openData.push(d);
-        if (d.isClosed) closedData.push(d);
-        if (d.isTracked) trackedData.push(d);
-    }
+    var openData = data.filter(function(d) { return d.isOpen; });
+    var closedData = data.filter(function(d) { return d.isClosed; });
+    var trackedData = data.filter(function(d) { return d.isTracked; });
 
     var openCount = openData.length, closedCount = closedData.length, trackedCount = trackedData.length;
 
@@ -1522,38 +1393,33 @@ function renderAll(data) {
     var projectBadges = ['project1Badge', 'project2Badge', 'projectOtherBadge'];
     for (var bi = 0; bi < projectIds.length && bi < projectBadges.length; bi++) {
         var pid = projectIds[bi];
-        var count = 0;
-        for (var i = 0; i < openData.length; i++) {
-            if (openData[i].projectId === pid) count++;
-        }
+        var pData = openData.filter(function(d) { return d.projectId === pid; });
         var label = projectLabels[pid] || pid;
-        safeSetText(projectBadges[bi], label + ': ' + count);
+        safeSetText(projectBadges[bi], label + ': ' + pData.length);
     }
 
     var center1Name = "智能驾驶与座舱开发中心", center2Name = "智能电子电气开发中心", centerOther = "其他中心";
-    var center1Data = [], center2Data = [], centerOtherData = [];
+    var center1Data = openData.filter(function(d) { return d.matchedDept === center1Name; });
+    var center2Data = openData.filter(function(d) { return d.matchedDept === center2Name; });
+    var centerOtherData = openData.filter(function(d) { return d.matchedDept === centerOther; });
+
     var c1Sw = 0, c1Hw = 0, c1Total = 0;
+    for (var i = 0; i < center1Data.length; i++) {
+        c1Sw += center1Data[i].swScore;
+        c1Hw += center1Data[i].hwScore;
+        c1Total += center1Data[i].totalScore;
+    }
     var c2Sw = 0, c2Hw = 0, c2Total = 0;
+    for (var j = 0; j < center2Data.length; j++) {
+        c2Sw += center2Data[j].swScore;
+        c2Hw += center2Data[j].hwScore;
+        c2Total += center2Data[j].totalScore;
+    }
     var otherSw = 0, otherHw = 0, otherTotal = 0;
-    
-    for (var i = 0; i < openData.length; i++) {
-        var d = openData[i];
-        if (d.matchedDept === center1Name) {
-            center1Data.push(d);
-            c1Sw += d.swScore;
-            c1Hw += d.hwScore;
-            c1Total += d.totalScore;
-        } else if (d.matchedDept === center2Name) {
-            center2Data.push(d);
-            c2Sw += d.swScore;
-            c2Hw += d.hwScore;
-            c2Total += d.totalScore;
-        } else {
-            centerOtherData.push(d);
-            otherSw += d.swScore;
-            otherHw += d.hwScore;
-            otherTotal += d.totalScore;
-        }
+    for (var k = 0; k < centerOtherData.length; k++) {
+        otherSw += centerOtherData[k].swScore;
+        otherHw += centerOtherData[k].hwScore;
+        otherTotal += centerOtherData[k].totalScore;
     }
 
     var totalSw = 0, totalHw = 0, totalScore = 0;
@@ -1573,79 +1439,45 @@ function renderAll(data) {
         '<div class="kpi-card" style="border-left:4px solid #94a3b8;"><div class="label"><span class="dept-tag orange">' + centerOther + '</span></div><div class="value">' + centerOtherData.length + '</div><div class="sub">软件 <span class="tag-soft">' + otherSw.toFixed(1) + '</span> · 硬件 <span class="tag-hard">' + otherHw.toFixed(1) + '</span> · 总分 <span class="tag-total">' + otherTotal.toFixed(1) + '</span></div></div>' +
         '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
     );
-    perfLog.mark('KPI 渲染完成');
 
     renderStatsTable(openData);
     renderTargetCharts(openData);
 
-    updateFilterOptions(data);
-    perfLog.mark('updateFilterOptions 完成');
-    
-    applyFilters();
-    perfLog.mark('applyFilters 完成');
-    
+    var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
+    updateOwnerFilter(allData);
+
+    var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
+    var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
+    renderTableWithFilter(data, ownerFilter, centerFilter);
+
     renderCharts(openData);
-    perfLog.mark('renderCharts 完成');
-    
-    perfLog.mark('renderAll 完成');
-    perfLog.summary();
 }
 
 // ============================================================
-// ★★★ 优化的图表渲染（分批执行）★★★
+// 图表渲染
 // ============================================================
 function renderCharts(openData) {
-    perfLog.mark('renderCharts 开始');
-    
-    // 使用 requestAnimationFrame 分批渲染，避免阻塞 UI
-    var chartTasks = [];
-    
-    // 准备所有图表数据
-    var statusSW = groupBySumCached(openData, 'mainStatus', 'swScore', 'statusSW');
-    var statusHW = groupBySumCached(openData, 'mainStatus', 'hwScore', 'statusHW');
-    var impSW = groupBySumCached(openData, 'importance', 'swScore', 'impSW');
-    var impHW = groupBySumCached(openData, 'importance', 'hwScore', 'impHW');
-    var deptData = groupByCached(openData, 'matchedDept', 'deptData');
-    var sourceData = groupByCached(openData, 'matchedProf', 'sourceData');
-    
-    // Top5 数据
-    var topData = [];
-    var sorted = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; });
-    for (var i = 0; i < Math.min(5, sorted.length); i++) {
-        var d = sorted[i];
-        var owner = d.owner.length > 6 ? d.owner.substring(0, 6) + '..' : d.owner;
-        topData.push([d.id + '#' + owner, d.totalScore]);
-    }
-    
-    // 构建任务列表
-    chartTasks.push({ fn: renderScoreBarChart, args: ['chartStatusSW', statusSW, '软件分', '#3b82f6'] });
-    chartTasks.push({ fn: renderScoreBarChart, args: ['chartStatusHW', statusHW, '硬件分', '#10b981'] });
-    chartTasks.push({ fn: renderScoreBarChart, args: ['chartImportanceSW', impSW, '软件分', '#3b82f6'] });
-    chartTasks.push({ fn: renderScoreBarChart, args: ['chartImportanceHW', impHW, '硬件分', '#10b981'] });
-    chartTasks.push({ fn: renderBarChart, args: ['chartDept', deptData, '#8b5cf6'] });
-    chartTasks.push({ fn: renderBarChart, args: ['chartSource', sourceData, '#06b6d4'] });
-    chartTasks.push({ fn: renderScoreChart, args: ['chartScore', topData] });
-    
-    // 复杂图表单独执行
+    var statusSW = groupBySum(openData, 'mainStatus', 'swScore');
+    renderScoreBarChart('chartStatusSW', statusSW, '软件分', '#3b82f6');
+    var statusHW = groupBySum(openData, 'mainStatus', 'hwScore');
+    renderScoreBarChart('chartStatusHW', statusHW, '硬件分', '#10b981');
+    var impSW = groupBySum(openData, 'importance', 'swScore');
+    renderScoreBarChart('chartImportanceSW', impSW, '软件分', '#3b82f6');
+    var impHW = groupBySum(openData, 'importance', 'hwScore');
+    renderScoreBarChart('chartImportanceHW', impHW, '硬件分', '#10b981');
+    var deptData = groupBy(openData, 'matchedDept');
+    renderBarChart('chartDept', deptData, '#8b5cf6');
     renderProjectCenterChart(openData);
     renderGanttChart(openData);
-    
-    // 分批执行简单图表
-    var taskIndex = 0;
-    function runNextChart() {
-        if (taskIndex >= chartTasks.length) {
-            perfLog.mark('所有图表渲染完成');
-            return;
-        }
-        var task = chartTasks[taskIndex];
-        task.fn.apply(null, task.args);
-        taskIndex++;
-        // 使用 requestAnimationFrame 让 UI 有机会更新
-        requestAnimationFrame(runNextChart);
+    var topData = openData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
+    var topChartData = [];
+    for (var i = 0; i < topData.length; i++) {
+        var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
+        topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
     }
-    
-    requestAnimationFrame(runNextChart);
-    perfLog.mark('renderCharts 任务已调度');
+    renderScoreChart('chartScore', topChartData);
+    var sourceData = groupBy(openData, 'matchedProf');
+    renderBarChart('chartSource', sourceData, '#06b6d4');
 }
 
 // ============================================================
@@ -1715,14 +1547,13 @@ function renderProjectCenterChart(openData) {
     var c1Sw = [], c1Hw = [], c2Sw = [], c2Hw = [], cOtherSw = [], cOtherHw = [];
     for (var pi = 0; pi < projectIds.length; pi++) {
         var pid = projectIds[pi];
+        var d1 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center1; });
+        var d2 = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === center2; });
+        var dOther = openData.filter(function(d) { return d.projectId === pid && d.matchedDept === centerOther; });
         var s1 = 0, h1 = 0, s2 = 0, h2 = 0, sOther = 0, hOther = 0;
-        for (var i = 0; i < openData.length; i++) {
-            var d = openData[i];
-            if (d.projectId !== pid) continue;
-            if (d.matchedDept === center1) { s1 += d.swScore; h1 += d.hwScore; }
-            else if (d.matchedDept === center2) { s2 += d.swScore; h2 += d.hwScore; }
-            else { sOther += d.swScore; hOther += d.hwScore; }
-        }
+        for (var j = 0; j < d1.length; j++) { s1 += d1[j].swScore; h1 += d1[j].hwScore; }
+        for (var k = 0; k < d2.length; k++) { s2 += d2[k].swScore; h2 += d2[k].hwScore; }
+        for (var l = 0; l < dOther.length; l++) { sOther += dOther[l].swScore; hOther += dOther[l].hwScore; }
         c1Sw.push(s1); c1Hw.push(h1);
         c2Sw.push(s2); c2Hw.push(h2);
         cOtherSw.push(sOther); cOtherHw.push(hOther);
@@ -1894,11 +1725,18 @@ function renderScoreChart(domId, data) {
 }
 
 // ============================================================
-// 页面启动
+// ★★★ 页面启动 ★★★
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 页面启动，开始加载配置...');
     loadAllConfigs();
+
+    setTimeout(function() {
+        document.getElementById('loadingIndicator').classList.add('hidden');
+        document.getElementById('loadingIndicator').style.display = 'none';
+        document.getElementById('contentArea').classList.remove('hidden');
+        document.getElementById('contentArea').style.display = 'block';
+        console.log('✅ 页面加载完成');
+    }, 500);
 });
 </script>
 </body>
