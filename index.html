@@ -319,7 +319,6 @@ var personMap = {};
 var appConfig = null;
 var allCenters = [];
 var allProfessions = [];
-var configsLoaded = false;
 var excelLoading = false;
 var displayConfig = {};
 
@@ -375,7 +374,7 @@ function safeSetHTML(id, html) {
 }
 
 // ============================================================
-// 配置加载（从 JSON 文件）
+// ★★★ 修改：配置加载，移除 configsLoaded 标志，改用 personMap 作为唯一判断 ★★★
 // ============================================================
 function loadAllConfigs() {
     // 1. 加载 projectConfig.json
@@ -391,7 +390,7 @@ function loadAllConfigs() {
             var projects = appConfig.projectConfig.projects || [];
             safeSetText('projectStatus', projects.length + ' 个');
             console.log('✅ projectConfig.json 加载成功');
-            checkAllConfigsLoaded();
+            tryStartApp();
         })
         .catch(function(err) {
             console.error('❌ projectConfig.json 加载失败:', err.message);
@@ -413,7 +412,7 @@ function loadAllConfigs() {
             safeSetText('personCountBadge', '已加载: ' + count + ' 人');
             console.log('✅ personConfig.json 加载成功，人数:', count);
             collectCentersAndProfessions(data);
-            checkAllConfigsLoaded();
+            tryStartApp();
         })
         .catch(function(err) {
             console.error('❌ personConfig.json 加载失败:', err.message);
@@ -437,6 +436,19 @@ function loadAllConfigs() {
             applyDisplayConfig();
             console.log('ℹ️ 使用内置 displayConfig');
         });
+}
+
+// ★★★ 新增：尝试启动应用（当 appConfig 和 personMap 都加载完成时）★★★
+function tryStartApp() {
+    if (appConfig && Object.keys(personMap).length > 0) {
+        console.log('✅ 所有配置加载完成');
+        updateProjectBadges();
+        // 确保只调用一次
+        if (!window._appStarted) {
+            window._appStarted = true;
+            autoLoadExcel();
+        }
+    }
 }
 
 function collectCentersAndProfessions(data) {
@@ -471,15 +483,6 @@ function buildPersonMap(data) {
                 }
             }
         }
-    }
-}
-
-function checkAllConfigsLoaded() {
-    if (appConfig && personMap && !configsLoaded) {
-        configsLoaded = true;
-        console.log('✅ 所有配置加载完成');
-        updateProjectBadges();
-        autoLoadExcel();
     }
 }
 
@@ -537,7 +540,6 @@ function autoLoadExcel() {
     if (excelLoading) return;
     excelLoading = true;
     
-    // 直接使用 data.xls
     fetch('data.xls')
         .then(function(res) {
             if (res.ok) {
@@ -1369,10 +1371,7 @@ function renderAll(data) {
         '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
     );
 
-    // ★★★ 渲染整体统计表格（使用openData）★★★
     renderStatsTable(openData);
-
-    // ★★★ 渲染目标达成率图表（使用openData）★★★
     renderTargetCharts(openData);
 
     var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
