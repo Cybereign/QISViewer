@@ -537,6 +537,7 @@ function autoLoadExcel() {
     if (excelLoading) return;
     excelLoading = true;
     
+    // 直接使用 data.xls
     fetch('data.xls')
         .then(function(res) {
             if (res.ok) {
@@ -928,7 +929,7 @@ function renderTableWithFilter(data, ownerFilter, centerFilter) {
 }
 
 // ============================================================
-// 渲染整体统计表格
+// ★★★ 渲染整体统计表格（动态获取所有中心和专业）★★★
 // ============================================================
 function renderStatsTable(openData) {
     var tbody = document.getElementById('statsBody');
@@ -947,13 +948,33 @@ function renderStatsTable(openData) {
     projectIds.push('other');
     projectNames['other'] = '其他项目';
 
-    var centers = ['智能驾驶与座舱开发中心', '智能电子电气开发中心', '其他中心'];
-
-    var deptProfessions = {
-        '智能驾驶与座舱开发中心': ['智能座舱', '智能驾驶', '导航地图', '车云APP', 'OTA', 'TBOX'],
-        '智能电子电气开发中心': ['智能车控', 'EMS', 'EE架构', '智能硬件'],
-        '其他中心': ['其他专业']
-    };
+    // ★★★ 动态获取所有中心和专业 ★★★
+    var centerMap = {};
+    for (var i = 0; i < openData.length; i++) {
+        var d = openData[i];
+        var center = d.matchedDept || '其他中心';
+        var prof = d.matchedProf || '其他专业';
+        if (!centerMap[center]) {
+            centerMap[center] = {};
+        }
+        if (!centerMap[center][prof]) {
+            centerMap[center][prof] = 0;
+        }
+        centerMap[center][prof]++;
+    }
+    
+    // 构建中心列表（固定顺序：两个主要中心在前，其他中心在后）
+    var centerList = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
+    var otherCenters = [];
+    for (var c in centerMap) {
+        if (centerMap.hasOwnProperty(c)) {
+            if (centerList.indexOf(c) === -1) {
+                otherCenters.push(c);
+            }
+        }
+    }
+    otherCenters.sort();
+    centerList = centerList.concat(otherCenters);
 
     var totalCount = 0;
     var html = '';
@@ -970,12 +991,23 @@ function renderStatsTable(openData) {
             '<td colspan="14" style="color:' + projectColor + ';">📁 ' + projectName + '（共 ' + projectData.length + ' 条）</td>' +
             '</tr>';
 
-        for (var ci = 0; ci < centers.length; ci++) {
-            var center = centers[ci];
+        for (var ci = 0; ci < centerList.length; ci++) {
+            var center = centerList[ci];
             var centerData = projectData.filter(function(d) { return d.matchedDept === center; });
             if (centerData.length === 0) continue;
 
-            var profs = deptProfessions[center] || ['其他'];
+            // ★★★ 动态获取该中心下的所有专业 ★★★
+            var profs = [];
+            var profSet = {};
+            for (var di = 0; di < centerData.length; di++) {
+                var profName = centerData[di].matchedProf || '其他专业';
+                if (!profSet[profName]) {
+                    profSet[profName] = true;
+                    profs.push(profName);
+                }
+            }
+            profs.sort();
+
             for (var pri = 0; pri < profs.length; pri++) {
                 var prof = profs[pri];
                 var profData = centerData.filter(function(d) { return d.matchedProf === prof; });
@@ -984,8 +1016,8 @@ function renderStatsTable(openData) {
                 var count = profData.length;
                 var sw = 0, hw = 0, total = 0;
                 var s1 = 0, s2 = 0, s3 = 0, s4 = 0, a = 0, b = 0, c = 0;
-                for (var di = 0; di < profData.length; di++) {
-                    var d = profData[di];
+                for (var di2 = 0; di2 < profData.length; di2++) {
+                    var d = profData[di2];
                     sw += d.swScore;
                     hw += d.hwScore;
                     total += d.totalScore;
@@ -1026,14 +1058,19 @@ function renderStatsTable(openData) {
 }
 
 // ============================================================
-// ★★★ 目标达成率图表 ★★★
+// ★★★ 目标达成率图表（修复版）★★★
 // ============================================================
 function renderTargetCharts(openData) {
     var modules = displayConfig.modules || {};
     if (modules.targetChart === false) return;
     
+    if (!appConfig || !appConfig.stageTarget) {
+        console.warn('⚠️ stageTarget 配置不存在');
+        return;
+    }
+    
     var projects = appConfig.projectConfig.projects || [];
-    var stages = (appConfig.stageTarget || {}).stages || {};
+    var stages = appConfig.stageTarget.stages || {};
     var centerNames = ['智能驾驶与座舱开发中心', '智能电子电气开发中心'];
     
     for (var pi = 0; pi < projects.length; pi++) {
@@ -1045,8 +1082,13 @@ function renderTargetCharts(openData) {
         
         var domId = (pi === 0) ? 'chartTarget1' : 'chartTarget2';
         var dom = document.getElementById(domId);
-        if (!dom) continue;
-        if (chartInstances[domId]) { chartInstances[domId].dispose(); }
+        if (!dom) {
+            console.warn('⚠️ 找不到图表容器:', domId);
+            continue;
+        }
+        if (chartInstances[domId]) {
+            chartInstances[domId].dispose();
+        }
         
         var chart = echarts.init(dom);
         chartInstances[domId] = chart;
@@ -1058,10 +1100,23 @@ function renderTargetCharts(openData) {
         var targetValues = [];
         var rateValues = [];
         
-        if (!stage || projectData.length === 0) {
+        if (!stage) {
             chart.setOption({
                 title: {
-                    text: projectData.length === 0 ? '暂无数据' : '未配置阶段目标',
+                    text: '未配置阶段目标 (阶段: ' + stageId + ')',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                }
+            });
+            console.warn('⚠️ 阶段配置不存在:', stageId);
+            continue;
+        }
+        
+        if (projectData.length === 0) {
+            chart.setOption({
+                title: {
+                    text: '暂无数据',
                     left: 'center',
                     top: 'center',
                     textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
@@ -1314,12 +1369,14 @@ function renderAll(data) {
         '<div class="kpi-card"><div class="label">未关闭总分</div><div class="value">' + totalScore.toFixed(1) + '</div><div class="sub">平均 ' + avgScore + ' 分/条</div></div>'
     );
 
+    // ★★★ 渲染整体统计表格（使用openData）★★★
     renderStatsTable(openData);
+
+    // ★★★ 渲染目标达成率图表（使用openData）★★★
+    renderTargetCharts(openData);
 
     var allData = data.filter(function(d) { return d.owner && d.owner !== '' && d.owner !== '未知'; });
     updateOwnerFilter(allData);
-    
-    renderTargetCharts(openData);
     
     var ownerFilter = document.getElementById('ownerFilter') ? document.getElementById('ownerFilter').value : '';
     var centerFilter = document.getElementById('centerFilter') ? document.getElementById('centerFilter').value : '';
@@ -1356,7 +1413,7 @@ function renderCharts(openData) {
 }
 
 // ============================================================
-// 图表渲染函数
+// 图表渲染函数（保持不变）
 // ============================================================
 function renderScoreBarChart(domId, data, label, color) {
     var dom = document.getElementById(domId);
