@@ -1648,7 +1648,6 @@
             var html = '';
 
             // 定义每个项目的图表列表
-            // 每个项目显示: 目标差值(大图)、主单状态、重要度分布、中心分布、项目对比、甘特图、综合评分Top5、专业分布
             var chartConfigs = [
                 { id: 'targetDiff', title: '目标差值', icon: 'fa-bullseye', height: '260px', type: 'target' },
                 { id: 'statusSW', title: '主单状态 (软件分)', icon: 'fa-tasks', height: '200px', type: 'statusSW' },
@@ -1661,7 +1660,7 @@
                 { id: 'projectCompare', title: '各中心软件/硬件分值', icon: 'fa-chart-bar', height: '200px',
                     type: 'projectCompare' },
                 { id: 'gantt', title: '缺陷评分甘特图', icon: 'fa-project-diagram', height: '280px', type: 'gantt' },
-                { id: 'scoreTop', title: '综合评分 Top5', icon: 'fa-star', height: '200px', type: 'scoreTop' },
+                { id: 'scoreTop', title: '综合评分 Top5（人员汇总）', icon: 'fa-star', height: '200px', type: 'scoreTop' },
                 { id: 'source', title: '专业分布', icon: 'fa-bug', height: '200px', type: 'source' }
             ];
 
@@ -1704,7 +1703,6 @@
 
                 var projectData = openData.filter(function(d) { return d.projectId === projectId2; });
 
-                // 延迟渲染，确保DOM已创建
                 setTimeout(function(pid, pdata) {
                     renderProjectTargetChart(pid, pdata);
                     renderProjectChartsData(pid, pdata);
@@ -2011,14 +2009,21 @@
             // 缺陷评分甘特图
             renderGanttChartSingle('chart_' + projectId + '_gantt', projectData);
 
-            // 综合评分 Top5
-            var topData = projectData.slice().sort(function(a, b) { return b.totalScore - a.totalScore; }).slice(0, 5);
-            var topChartData = [];
-            for (var i = 0; i < topData.length; i++) {
-                var owner = topData[i].owner.length > 6 ? topData[i].owner.substring(0, 6) + '..' : topData[i].owner;
-                topChartData.push([topData[i].id + '#' + owner, topData[i].totalScore]);
+            // ★★★ 综合评分 Top5（按人员汇总）★★★
+            var ownerScoreMap = {};
+            for (var i = 0; i < projectData.length; i++) {
+                var d = projectData[i];
+                if (!ownerScoreMap[d.owner]) {
+                    ownerScoreMap[d.owner] = 0;
+                }
+                ownerScoreMap[d.owner] += d.totalScore;
             }
-            renderScoreChart('chart_' + projectId + '_scoreTop', topChartData);
+            var topData = Object.keys(ownerScoreMap).map(function(key) {
+                return [key, ownerScoreMap[key]];
+            }).sort(function(a, b) {
+                return b[1] - a[1];
+            }).slice(0, 5);
+            renderScoreChart('chart_' + projectId + '_scoreTop', topData);
 
             // 专业分布
             var sourceData = groupBy(projectData, 'matchedProf');
