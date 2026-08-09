@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>缺陷数据智能分析看板</title>
+    <title>DH1 QIS问题管理系统看板</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
     </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
@@ -716,7 +716,7 @@
     <div class="dashboard">
         <!-- ===== 头部 ===== -->
         <div id="header" class="header">
-            <h1><i class="fas fa-brain"></i>缺陷智能分析看板</h1>
+            <h1><i class="fas fa-brain"></i>DH1 QIS问题管理系统看板</h1>
             <div class="tools">
                 <span class="info-badge" id="fileInfo"><i class="fas fa-file-excel"></i> 加载中...</span>
                 <button class="btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-upload"></i> 选择 Excel</button>
@@ -2316,46 +2316,59 @@
         }
 
         // ============================================================
-        // ★★★ 渲染单个项目的其他图表（超期统计 + 原有图表）★★★
+        // ★★★ 渲染单个项目的其他图表 ★★★
+        // ★★★ 主单状态和重要度分布：按 allCenters 过滤 ★★★
+        // ★★★ 1/5和4/5超期统计、甘特图、DI点数：按 personMap 过滤 ★★★
         // ============================================================
         function renderProjectChartsData(projectId, projectData) {
-            // ★★★ 1/5 超期统计（只统计超期 > 3天）★★★
+            // ★★★ 1/5 超期统计（只统计超期 > 3天，且只统计 personMap 中的人员）★★★
             renderOverdueChart('chart_' + projectId + '_overdue_1_5', projectData, '1/5', true);
 
-            // ★★★ 4/5 统计（只统计人名和数量，不区分超期）★★★
+            // ★★★ 4/5 统计（只统计人名和数量，不区分超期，且只统计 personMap 中的人员）★★★
             renderOverdueChart('chart_' + projectId + '_overdue_4_5', projectData, '4/5', false);
 
-            // 主单状态 (软件分)
-            var statusSW = groupBySum(projectData, 'mainStatus', 'swScore');
+            // ★★★ 主单状态和重要度分布：按 allCenters 过滤（只显示配置中存在的中心）★★★
+            var validCenterData = projectData.filter(function(d) {
+                return allCenters.indexOf(d.matchedDept) !== -1;
+            });
+
+            // 主单状态 (软件分) - 使用按中心过滤后的数据
+            var statusSW = groupBySum(validCenterData, 'mainStatus', 'swScore');
             renderScoreBarChart('chart_' + projectId + '_statusSW', statusSW, '软件分', '#3b82f6');
 
-            var statusHW = groupBySum(projectData, 'mainStatus', 'hwScore');
+            // 主单状态 (硬件分) - 使用按中心过滤后的数据
+            var statusHW = groupBySum(validCenterData, 'mainStatus', 'hwScore');
             renderScoreBarChart('chart_' + projectId + '_statusHW', statusHW, '硬件分', '#10b981');
 
-            var impSW = groupBySum(projectData, 'importance', 'swScore');
+            // 重要度分布 (软件分) - 使用按中心过滤后的数据
+            var impSW = groupBySum(validCenterData, 'importance', 'swScore');
             renderScoreBarChart('chart_' + projectId + '_importanceSW', impSW, '软件分', '#3b82f6');
 
-            var impHW = groupBySum(projectData, 'importance', 'hwScore');
+            // 重要度分布 (硬件分) - 使用按中心过滤后的数据
+            var impHW = groupBySum(validCenterData, 'importance', 'hwScore');
             renderScoreBarChart('chart_' + projectId + '_importanceHW', impHW, '硬件分', '#10b981');
 
+            // 匹配中心分布 - 使用全部数据（中心来自 personMap）
             var deptData = groupBy(projectData, 'matchedDept');
             renderBarChart('chart_' + projectId + '_dept', deptData, '#8b5cf6');
 
+            // 各中心软件/硬件分值 - 使用全部数据
             renderProjectCenterChartSingle('chart_' + projectId + '_projectCompare', projectData);
 
+            // ★★★ 缺陷评分甘特图：只统计 personMap 中的人员 ★★★
             renderGanttChartPersonSummary('chart_' + projectId + '_gantt', projectData);
 
-            // ★★★ 问题DI点数 TOP10（人员汇总）★★★
+            // ★★★ 问题DI点数 TOP10：只统计 personMap 中的人员 ★★★
             var ownerScoreMap = {};
-            var ownerCountMap = {};
             for (var i = 0; i < projectData.length; i++) {
                 var d = projectData[i];
-                if (!ownerScoreMap[d.owner]) {
-                    ownerScoreMap[d.owner] = 0;
-                    ownerCountMap[d.owner] = 0;
+                // ★★★ 只统计 personMap 中存在的人员 ★★★
+                if (personMap[d.owner]) {
+                    if (!ownerScoreMap[d.owner]) {
+                        ownerScoreMap[d.owner] = 0;
+                    }
+                    ownerScoreMap[d.owner] += d.totalScore;
                 }
-                ownerScoreMap[d.owner] += d.totalScore;
-                ownerCountMap[d.owner]++;
             }
             var topData = Object.keys(ownerScoreMap).map(function(key) {
                 return [key, Math.round(ownerScoreMap[key] * 10) / 10];
@@ -2364,6 +2377,7 @@
             }).slice(0, 10);
             renderScoreChart('chart_' + projectId + '_scoreTop', topData);
 
+            // 专业分布 - 使用全部数据（专业来自 personMap）
             var sourceData = groupBy(projectData, 'matchedProf');
             renderBarChart('chart_' + projectId + '_source', sourceData, '#06b6d4');
         }
@@ -2465,7 +2479,7 @@
         }
 
         // ============================================================
-        // ★★★ 缺陷评分甘特图（人员汇总TOP10）- 数值显示在右侧 ★★★
+        // ★★★ 缺陷评分甘特图（人员汇总TOP10）- 只统计 personMap 中的人员 ★★★
         // ============================================================
         function renderGanttChartPersonSummary(domId, projectData) {
             var dom = document.getElementById(domId);
@@ -2474,30 +2488,33 @@
             var chart = echarts.init(dom);
             chartInstances[domId] = chart;
 
-            var personMap = {};
+            var personMapData = {};
             for (var i = 0; i < projectData.length; i++) {
                 var d = projectData[i];
-                if (!personMap[d.owner]) {
-                    personMap[d.owner] = {
-                        sw: 0,
-                        hw: 0,
-                        total: 0,
-                        count: 0
-                    };
+                // ★★★ 只统计 personMap 中存在的人员 ★★★
+                if (personMap[d.owner]) {
+                    if (!personMapData[d.owner]) {
+                        personMapData[d.owner] = {
+                            sw: 0,
+                            hw: 0,
+                            total: 0,
+                            count: 0
+                        };
+                    }
+                    personMapData[d.owner].sw += d.swScore;
+                    personMapData[d.owner].hw += d.hwScore;
+                    personMapData[d.owner].total += d.totalScore;
+                    personMapData[d.owner].count++;
                 }
-                personMap[d.owner].sw += d.swScore;
-                personMap[d.owner].hw += d.hwScore;
-                personMap[d.owner].total += d.totalScore;
-                personMap[d.owner].count++;
             }
 
-            var personList = Object.keys(personMap).map(function(key) {
+            var personList = Object.keys(personMapData).map(function(key) {
                 return {
                     name: key,
-                    sw: Math.round(personMap[key].sw * 10) / 10,
-                    hw: Math.round(personMap[key].hw * 10) / 10,
-                    total: Math.round(personMap[key].total * 10) / 10,
-                    count: personMap[key].count
+                    sw: Math.round(personMapData[key].sw * 10) / 10,
+                    hw: Math.round(personMapData[key].hw * 10) / 10,
+                    total: Math.round(personMapData[key].total * 10) / 10,
+                    count: personMapData[key].count
                 };
             }).sort(function(a, b) {
                 return b.total - a.total;
@@ -2594,7 +2611,7 @@
         }
 
         // ============================================================
-        // ★★★ 超期统计图（固定高度，每列最多10人）★★★
+        // ★★★ 超期统计图（只统计 personMap 中的人员）★★★
         // statusValue: '1/5' 或 '4/5'
         // checkOverdue: true 表示只统计超期 > 3天；false 表示不区分超期
         // ★★★ 修复：每列使用自己的 max 值 ★★★
@@ -2610,9 +2627,11 @@
             var today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // 筛选指定改善状态
+            // 筛选指定改善状态，且只统计 personMap 中的人员
             var filteredItems = projectData.filter(function(d) {
                 if (d.improveStatus !== statusValue) return false;
+                // ★★★ 只统计 personMap 中存在的人员 ★★★
+                if (!personMap[d.owner]) return false;
                 if (checkOverdue) {
                     // 1/5 模式：只统计有立项日期且超期 > 3天
                     if (!d.projectDateObj) return false;
@@ -2641,6 +2660,7 @@
             var ownerMap = {};
             for (var i = 0; i < filteredItems.length; i++) {
                 var d = filteredItems[i];
+                // 已经过滤了 personMap，这里直接使用
                 if (!ownerMap[d.owner]) {
                     ownerMap[d.owner] = 0;
                 }
