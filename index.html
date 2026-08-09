@@ -2597,6 +2597,7 @@
         // ★★★ 超期统计图（固定高度，每列最多10人）★★★
         // statusValue: '1/5' 或 '4/5'
         // checkOverdue: true 表示只统计超期 > 3天；false 表示不区分超期
+        // ★★★ 修复：每列使用自己的 max 值 ★★★
         // ============================================================
         function renderOverdueChart(domId, projectData, statusValue, checkOverdue) {
             var dom = document.getElementById(domId);
@@ -2671,13 +2672,6 @@
                 columnData.push(colItems);
             }
 
-            // 计算每列的最大值（用于统一比例）
-            var maxCount = 0;
-            for (var i = 0; i < ownerList.length; i++) {
-                if (ownerList[i].count > maxCount) maxCount = ownerList[i].count;
-            }
-            if (maxCount === 0) maxCount = 1;
-
             // 构建 ECharts 多网格配置
             var grids = [];
             var xAxes = [];
@@ -2690,6 +2684,13 @@
                 var colItems = columnData[col];
                 var names = colItems.map(function(item) { return item.name || ''; });
                 var counts = colItems.map(function(item) { return item.count || 0; });
+
+                // ★★★ 计算当前列的最大值 ★★★
+                var colMax = 0;
+                for (var i = 0; i < colItems.length; i++) {
+                    if (colItems[i].count > colMax) colMax = colItems[i].count;
+                }
+                if (colMax === 0) colMax = 1;
 
                 var left = col * colWidth + 1.5;
                 var right = 100 - (col + 1) * colWidth + 1.5;
@@ -2709,7 +2710,8 @@
                     name: '',
                     splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
                     show: false,
-                    max: maxCount * 1.2
+                    // ★★★ 使用当前列自己的最大值 ★★★
+                    max: colMax * 1.2
                 });
 
                 yAxes.push({
