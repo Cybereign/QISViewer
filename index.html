@@ -1275,7 +1275,6 @@
                 var projectDateObj = null;
                 if (projectDate) {
                     try {
-                        // 尝试解析多种日期格式
                         var d = new Date(projectDate);
                         if (!isNaN(d.getTime())) {
                             projectDateObj = d;
@@ -1964,12 +1963,12 @@
                 // 1. 目标差值
                 { id: 'targetDiff', title: '目标差值', icon: 'fa-bullseye', height: '260px', type: 'target' },
 
-                // ★★★ 2. 新增：1/5 超期统计 ★★★
-                { id: 'overdue_1_5', title: '1/5 状态超期统计（>3天）', icon: 'fa-clock', height: '280px',
+                // ★★★ 1/5 超期统计（只统计超期 > 3天）★★★
+                { id: 'overdue_1_5', title: '1/5 状态超期统计（>3天）', icon: 'fa-clock', height: '340px',
                 type: 'overdue_1_5' },
 
-                // ★★★ 3. 新增：4/5 超期统计 ★★★
-                { id: 'overdue_4_5', title: '4/5 状态超期统计（>3天）', icon: 'fa-clock', height: '280px',
+                // ★★★ 4/5 统计（只统计人名和数量，不区分超期）★★★
+                { id: 'overdue_4_5', title: '4/5 状态统计（人名+数量）', icon: 'fa-clock', height: '340px',
                 type: 'overdue_4_5' },
 
                 // 4. 主单状态 (软件分)
@@ -1984,7 +1983,8 @@
                     type: 'projectCompare' },
                 { id: 'gantt', title: '缺陷评分甘特图（人员汇总TOP10）', icon: 'fa-project-diagram', height: '280px',
                     type: 'gantt' },
-                { id: 'scoreTop', title: '综合评分 TOP10（人员汇总）', icon: 'fa-star', height: '200px', type: 'scoreTop' },
+                // ★★★ 改为：问题DI点数 TOP10（人员汇总）★★★
+                { id: 'scoreTop', title: '问题DI点数 TOP10（人员汇总）', icon: 'fa-star', height: '200px', type: 'scoreTop' },
                 { id: 'source', title: '专业分布', icon: 'fa-bug', height: '200px', type: 'source' }
             ];
 
@@ -2017,19 +2017,34 @@
 
             container.innerHTML = html;
 
+            // 使用 requestAnimationFrame 分批渲染，避免卡顿
+            var projectDataMap = {};
             for (var pi2 = 0; pi2 < projects.length; pi2++) {
                 var proj2 = projects[pi2];
                 var projectId2 = proj2.id;
                 var hasData2 = openData.some(function(d) { return d.projectId === projectId2; });
                 if (!hasData2) continue;
-
-                var projectData = openData.filter(function(d) { return d.projectId === projectId2; });
-
-                setTimeout(function(pid, pdata) {
-                    renderProjectTargetChart(pid, pdata);
-                    renderProjectChartsData(pid, pdata);
-                }, 50, projectId2, projectData);
+                projectDataMap[projectId2] = openData.filter(function(d) { return d.projectId === projectId2; });
             }
+
+            // 分批渲染：每批渲染一个项目
+            var projectIds = Object.keys(projectDataMap);
+            var batchIndex = 0;
+
+            function renderNextBatch() {
+                if (batchIndex >= projectIds.length) return;
+                var pid = projectIds[batchIndex];
+                var pdata = projectDataMap[pid];
+                renderProjectTargetChart(pid, pdata);
+                renderProjectChartsData(pid, pdata);
+                batchIndex++;
+                // 使用 requestAnimationFrame 让浏览器有时间处理其他任务
+                if (batchIndex < projectIds.length) {
+                    requestAnimationFrame(renderNextBatch);
+                }
+            }
+
+            requestAnimationFrame(renderNextBatch);
         }
 
         // ============================================================
@@ -2301,14 +2316,14 @@
         }
 
         // ============================================================
-        // ★★★ 渲染单个项目的其他图表 ★★★
+        // ★★★ 渲染单个项目的其他图表（超期统计 + 原有图表）★★★
         // ============================================================
         function renderProjectChartsData(projectId, projectData) {
-            // ★★★ 新增：1/5 超期统计 ★★★
-            renderOverdueChart('chart_' + projectId + '_overdue_1_5', projectData, '1/5');
+            // ★★★ 1/5 超期统计（只统计超期 > 3天）★★★
+            renderOverdueChart('chart_' + projectId + '_overdue_1_5', projectData, '1/5', true);
 
-            // ★★★ 新增：4/5 超期统计 ★★★
-            renderOverdueChart('chart_' + projectId + '_overdue_4_5', projectData, '4/5');
+            // ★★★ 4/5 统计（只统计人名和数量，不区分超期）★★★
+            renderOverdueChart('chart_' + projectId + '_overdue_4_5', projectData, '4/5', false);
 
             // 主单状态 (软件分)
             var statusSW = groupBySum(projectData, 'mainStatus', 'swScore');
@@ -2330,6 +2345,7 @@
 
             renderGanttChartPersonSummary('chart_' + projectId + '_gantt', projectData);
 
+            // ★★★ 问题DI点数 TOP10（人员汇总）★★★
             var ownerScoreMap = {};
             var ownerCountMap = {};
             for (var i = 0; i < projectData.length; i++) {
@@ -2523,7 +2539,7 @@
                             '问题数: <strong>' + p.count + '</strong> 条<br/>' +
                             '软件分: <strong>' + p.sw.toFixed(1) + '</strong><br/>' +
                             '硬件分: <strong>' + p.hw.toFixed(1) + '</strong><br/>' +
-                            '综合评分: <strong>' + p.total.toFixed(1) + '</strong>';
+                            '问题DI点数: <strong>' + p.total.toFixed(1) + '</strong>';
                     }
                 },
                 legend: { data: ['软件分', '硬件分'], bottom: 0, icon: 'roundRect', itemWidth: 10,
@@ -2578,9 +2594,11 @@
         }
 
         // ============================================================
-        // ★★★ 超期统计图（1/5 或 4/5 状态，超期 > 3天，每列最多10人）★★★
+        // ★★★ 超期统计图（固定高度，每列最多10人）★★★
+        // statusValue: '1/5' 或 '4/5'
+        // checkOverdue: true 表示只统计超期 > 3天；false 表示不区分超期
         // ============================================================
-        function renderOverdueChart(domId, projectData, statusValue) {
+        function renderOverdueChart(domId, projectData, statusValue, checkOverdue) {
             var dom = document.getElementById(domId);
             if (!dom) return;
             if (chartInstances[domId]) {
@@ -2591,19 +2609,24 @@
             var today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // 筛选指定改善状态 + 有立项日期 + 超期 > 3天
-            var overdueItems = projectData.filter(function(d) {
+            // 筛选指定改善状态
+            var filteredItems = projectData.filter(function(d) {
                 if (d.improveStatus !== statusValue) return false;
-                if (!d.projectDateObj) return false;
-                var diffDays = Math.floor((today - d.projectDateObj) / (1000 * 60 * 60 * 24));
-                return diffDays > 3;
+                if (checkOverdue) {
+                    // 1/5 模式：只统计有立项日期且超期 > 3天
+                    if (!d.projectDateObj) return false;
+                    var diffDays = Math.floor((today - d.projectDateObj) / (1000 * 60 * 60 * 24));
+                    return diffDays > 3;
+                }
+                // 4/5 模式：不区分超期
+                return true;
             });
 
-            if (overdueItems.length === 0) {
+            if (filteredItems.length === 0) {
                 var chart = echarts.init(dom);
                 chart.setOption({
                     title: {
-                        text: '暂无超期数据',
+                        text: '暂无数据',
                         left: 'center',
                         top: 'center',
                         textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
@@ -2615,8 +2638,8 @@
 
             // 按责任人分组统计
             var ownerMap = {};
-            for (var i = 0; i < overdueItems.length; i++) {
-                var d = overdueItems[i];
+            for (var i = 0; i < filteredItems.length; i++) {
+                var d = filteredItems[i];
                 if (!ownerMap[d.owner]) {
                     ownerMap[d.owner] = 0;
                 }
@@ -2630,43 +2653,53 @@
                 return b.count - a.count;
             });
 
-            // 每列最多10人
+            // 每列最多10人，计算需要几列
             var PER_COLUMN = 10;
             var totalPeople = ownerList.length;
             var numColumns = Math.ceil(totalPeople / PER_COLUMN);
 
-            // 分配数据到各列
+            // 分配数据到各列（补齐到10人，保持高度一致）
             var columnData = [];
             for (var col = 0; col < numColumns; col++) {
                 var start = col * PER_COLUMN;
                 var end = Math.min(start + PER_COLUMN, totalPeople);
-                columnData.push(ownerList.slice(start, end));
+                var colItems = ownerList.slice(start, end);
+                // 补齐到10人（添加空占位）
+                while (colItems.length < PER_COLUMN) {
+                    colItems.push({ name: '', count: 0 });
+                }
+                columnData.push(colItems);
             }
+
+            // 计算每列的最大值（用于统一比例）
+            var maxCount = 0;
+            for (var i = 0; i < ownerList.length; i++) {
+                if (ownerList[i].count > maxCount) maxCount = ownerList[i].count;
+            }
+            if (maxCount === 0) maxCount = 1;
 
             // 构建 ECharts 多网格配置
             var grids = [];
             var xAxes = [];
             var yAxes = [];
             var series = [];
-            var legendData = ['超期数量'];
 
-            // 计算每个 grid 的宽度
             var colWidth = 100 / numColumns;
 
             for (var col = 0; col < numColumns; col++) {
                 var colItems = columnData[col];
-                var names = colItems.map(function(item) { return item.name; });
-                var counts = colItems.map(function(item) { return item.count; });
+                var names = colItems.map(function(item) { return item.name || ''; });
+                var counts = colItems.map(function(item) { return item.count || 0; });
 
-                var left = col * colWidth + 2;
-                var right = 100 - (col + 1) * colWidth + 2;
+                var left = col * colWidth + 1.5;
+                var right = 100 - (col + 1) * colWidth + 1.5;
 
                 grids.push({
                     left: left + '%',
                     right: right + '%',
-                    top: '8%',
-                    bottom: '15%',
-                    width: (colWidth - 2) + '%',
+                    top: '6%',
+                    bottom: '10%',
+                    width: (colWidth - 3) + '%',
                     containLabel: true
                 });
 
@@ -2675,14 +2708,15 @@
                     type: 'value',
                     name: '',
                     splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                    show: col === 0 ? true : false
+                    show: false,
+                    max: maxCount * 1.2
                 });
 
                 yAxes.push({
                     gridIndex: col,
                     type: 'category',
                     data: names,
-                    axisLabel: { fontSize: 9, interval: 0 },
+                    axisLabel: { fontSize: 9, interval: 0, show: true, width: 60, overflow: 'truncate' },
                     axisLine: { show: true },
                     axisTick: { show: true }
                 });
@@ -2693,7 +2727,7 @@
                     data: counts,
                     barWidth: '50%',
                     itemStyle: {
-                        color: '#ef4444',
+                        color: statusValue === '1/5' ? '#ef4444' : '#f59e0b',
                         borderRadius: [0, 4, 4, 0]
                     },
                     label: {
@@ -2701,7 +2735,10 @@
                         position: 'right',
                         fontSize: 10,
                         fontWeight: 700,
-                        color: '#dc2626'
+                        color: statusValue === '1/5' ? '#dc2626' : '#d97706',
+                        formatter: function(params) {
+                            return params.value > 0 ? params.value : '';
+                        }
                     },
                     xAxisIndex: col,
                     yAxisIndex: col
@@ -2712,8 +2749,15 @@
             chartInstances[domId] = chart;
 
             var statusLabel = statusValue === '1/5' ? '1/5' : '4/5';
+            var titleSuffix = checkOverdue ? '（>3天）' : '（人名+数量）';
 
             chart.setOption({
+                title: {
+                    text: statusValue + ' 状态' + titleSuffix,
+                    left: 'center',
+                    top: 0,
+                    textStyle: { fontSize: 12, fontWeight: 600, color: '#1e293b' }
+                },
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: { type: 'shadow' },
@@ -2723,19 +2767,11 @@
                         var colIdx = p.seriesIndex;
                         var items = columnData[colIdx] || [];
                         var item = items[idx];
-                        if (!item) return '';
+                        if (!item || !item.name) return '';
                         return '<strong>' + item.name + '</strong><br/>' +
                             '改善状态: ' + statusValue + '<br/>' +
-                            '超期数量: <strong>' + item.count + '</strong> 条';
+                            '数量: <strong>' + item.count + '</strong> 条';
                     }
-                },
-                legend: {
-                    data: legendData,
-                    bottom: 0,
-                    icon: 'roundRect',
-                    itemWidth: 12,
-                    itemHeight: 8,
-                    fontSize: 10
                 },
                 grid: grids,
                 xAxis: xAxes,
@@ -2854,6 +2890,9 @@
             chart._resizeHandler = resizeHandler;
         }
 
+        // ============================================================
+        // ★★★ 问题DI点数 TOP10（人员汇总）- 修正名称 ★★★
+        // ============================================================
         function renderScoreChart(domId, data) {
             var dom = document.getElementById(domId);
             if (!dom) return;
@@ -2872,13 +2911,13 @@
                     axisPointer: { type: 'shadow' },
                     formatter: function(params) {
                         var p = params[0];
-                        return '<strong>' + p.name + '</strong><br/>综合评分: ' + p.value.toFixed(1) + ' 分';
+                        return '<strong>' + p.name + '</strong><br/>问题DI点数: ' + p.value.toFixed(1);
                     }
                 },
                 grid: { left: '8%', right: '6%', top: '10%', bottom: '22%' },
                 xAxis: { type: 'category', data: categories, axisLabel: { rotate: 15, fontSize: 8,
                         interval: 0 } },
-                yAxis: { type: 'value', name: '总分', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
+                yAxis: { type: 'value', name: '问题DI点数', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
                             type: 'dashed' } } },
                 series: [{
                     data: values,
