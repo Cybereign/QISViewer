@@ -2050,8 +2050,7 @@
         // ============================================================
         // ★★★ 渲染单个项目的目标差值图表 ★★★
         // 双Y轴方案：左侧主轴显示高分(>150)，右侧副轴显示低分(≤150)
-        // 两个轴高度相同但刻度不同，所有柱状条都能清晰显示
-        // ★★★ Tooltip 已修复：正确对应高分组和低分组数据 ★★★
+        // 修复：Tooltip 直接使用排序后的数据源，索引正确对应
         // ============================================================
         function renderProjectTargetChart(projectId, projectData) {
             var domId = 'chart_' + projectId + '_targetDiff';
@@ -2183,27 +2182,31 @@
             var highItems = items.filter(function(item) { return item.actual > THRESHOLD; });
             var lowItems = items.filter(function(item) { return item.actual <= THRESHOLD; });
 
-            var sortedItems = highItems.concat(lowItems);
-
-            var sortedCategories = sortedItems.map(function(item) { return item.category; });
-            var sortedActual = sortedItems.map(function(item) { return item.actual; });
-            var sortedTarget = sortedItems.map(function(item) { return item.target; });
-            var sortedGreen = sortedItems.map(function(item) { return item.green; });
-            var sortedRed = sortedItems.map(function(item) { return item.red; });
-
             var chart = echarts.init(dom);
             chartInstances[domId] = chart;
-
-            var highMax = highItems.length > 0 ? Math.max.apply(null, highItems.map(function(i) { return i.actual; })) : 0;
-            var lowMax = lowItems.length > 0 ? Math.max.apply(null, lowItems.map(function(i) { return i.actual; })) : 0;
-
-            var leftMax = Math.max(highMax * 1.2, 1);
-            var rightMax = Math.max(lowMax * 1.2, 1);
 
             var hasHigh = highItems.length > 0;
             var hasLow = lowItems.length > 0;
 
-            var totalItems = sortedCategories.length;
+            if (!hasHigh && !hasLow) {
+                chart.setOption({
+                    title: {
+                        text: '无有效数据（所有值均为0）',
+                        left: 'center',
+                        top: 'center',
+                        textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
+                    }
+                });
+                return;
+            }
+
+            var highMax = hasHigh ? Math.max.apply(null, highItems.map(function(i) { return i.actual; })) : 0;
+            var lowMax = hasLow ? Math.max.apply(null, lowItems.map(function(i) { return i.actual; })) : 0;
+
+            var leftMax = Math.max(highMax * 1.2, 1);
+            var rightMax = Math.max(lowMax * 1.2, 1);
+
+            var totalItems = items.length;
             var highCount = highItems.length;
             var lowCount = lowItems.length;
 
@@ -2219,6 +2222,7 @@
             var grids = [];
             var xAxes = [];
 
+            // 左侧网格（高分组）
             if (hasHigh) {
                 grids.push({
                     left: '4%',
@@ -2243,6 +2247,7 @@
                 });
             }
 
+            // 右侧网格（低分组）
             if (hasLow) {
                 var rightGridIndex = hasHigh ? 1 : 0;
                 grids.push({
@@ -2268,6 +2273,7 @@
                 });
             }
 
+            // 补齐占位grid（防止ECharts报错）
             if (hasHigh && !hasLow) {
                 grids.push({
                     left: '85%',
@@ -2307,21 +2313,9 @@
                 });
             }
 
-            if (!hasHigh && !hasLow) {
-                chart.setOption({
-                    title: {
-                        text: '暂无数据',
-                        left: 'center',
-                        top: 'center',
-                        textStyle: { color: '#94a3b8', fontSize: 13, fontWeight: 400 }
-                    }
-                });
-                return;
-            }
-
             var yAxes = [];
-            var yAxisIndex = 0;
 
+            // 左侧Y轴（主，高分）
             if (hasHigh) {
                 yAxes.push({
                     type: 'value',
@@ -2338,9 +2332,9 @@
                         formatter: function(value) { return value.toFixed(0); }
                     }
                 });
-                yAxisIndex++;
             }
 
+            // 右侧Y轴（副，低分）
             if (hasLow) {
                 var rightGridIndex = hasHigh ? 1 : 0;
                 yAxes.push({
@@ -2360,6 +2354,7 @@
                 });
             }
 
+            // 补齐占位Y轴
             if (hasHigh && !hasLow) {
                 yAxes.push({
                     type: 'value',
@@ -2391,7 +2386,7 @@
 
             var series = [];
 
-            // 高分组系列
+            // ===== 高分组系列 =====
             if (hasHigh) {
                 var highGreen = highItems.map(function(item) { return item.green; });
                 var highRed = highItems.map(function(item) { return item.red; });
@@ -2452,7 +2447,7 @@
                 });
             }
 
-            // 低分组系列
+            // ===== 低分组系列 =====
             if (hasLow) {
                 var lowGreen = lowItems.map(function(item) { return item.green; });
                 var lowRed = lowItems.map(function(item) { return item.red; });
@@ -2516,7 +2511,16 @@
                 });
             }
 
-            // ★★★ 修复 Tooltip：通过 xAxisIndex 判断分组 ★★★
+            // ★★★ 修复 Tooltip ★★★
+            // 直接使用排序分组后的 highItems 和 lowItems，索引完全对应
+            // 不再使用 chartData 引用，避免索引错位
+            var tooltipData = {
+                highItems: highItems,
+                lowItems: lowItems,
+                hasHigh: hasHigh,
+                hasLow: hasLow
+            };
+
             var legendData = ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'];
 
             chart.setOption({
@@ -2526,17 +2530,15 @@
                     formatter: function(params) {
                         if (!params || params.length === 0) return '';
 
-                        // 获取第一个有效参数的 xAxisIndex 来判断分组
+                        // 获取 xAxisIndex 判断分组
                         var xAxisIdx = 0;
                         for (var p = 0; p < params.length; p++) {
-                            if (params[p].dataIndex !== undefined) {
-                                xAxisIdx = params[p].xAxisIndex || 0;
+                            if (params[p].xAxisIndex !== undefined) {
+                                xAxisIdx = params[p].xAxisIndex;
                                 break;
                             }
                         }
 
-                        // 判断是高分还是低分
-                        var isHigh = (xAxisIdx === 0 && hasHigh);
                         var idx = 0;
                         for (var p = 0; p < params.length; p++) {
                             if (params[p].dataIndex !== undefined) {
@@ -2549,27 +2551,37 @@
                         var actual = 0;
                         var target = 0;
 
-                        if (isHigh && highItems.length > 0 && idx < highItems.length) {
-                            var item = highItems[idx];
+                        // 根据分组获取数据
+                        if (xAxisIdx === 0 && tooltipData.hasHigh && idx < tooltipData.highItems.length) {
+                            var item = tooltipData.highItems[idx];
                             name = item.category;
                             actual = item.actual;
                             target = item.target;
-                        } else if (!isHigh && lowItems.length > 0 && idx < lowItems.length) {
-                            var item2 = lowItems[idx];
-                            name = item2.category;
-                            actual = item2.actual;
-                            target = item2.target;
-                        } else if (sortedCategories.length > 0 && idx < sortedCategories.length) {
-                            // 兜底逻辑
-                            name = sortedCategories[idx] || '';
-                            actual = sortedActual[idx] || 0;
-                            target = sortedTarget[idx] || 0;
+                        } else if (xAxisIdx === 1 && tooltipData.hasLow && idx < tooltipData.lowItems.length) {
+                            var item = tooltipData.lowItems[idx];
+                            name = item.category;
+                            actual = item.actual;
+                            target = item.target;
                         }
+
+                        // 如果还没有取到数据，尝试从所有项中查找（兜底）
+                        if (!name) {
+                            var allItems = tooltipData.highItems.concat(tooltipData.lowItems);
+                            if (idx < allItems.length) {
+                                var item = allItems[idx];
+                                name = item.category;
+                                actual = item.actual;
+                                target = item.target;
+                            }
+                        }
+
+                        if (!name) return '';
 
                         var diff = actual - target;
                         var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
                         var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
                         var diffColor = diff <= 0 ? '#10b981' : '#ef4444';
+
                         return '<strong>' + name + '</strong><br/>' +
                             '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
                             '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
