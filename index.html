@@ -2048,9 +2048,9 @@
         }
 
         // ============================================================
-        // ★★★ 渲染单个项目的目标差值图表 ★★★
-        // 双Y轴方案：左侧主轴显示高分(>150)，右侧副轴显示低分(≤150)
-        // 修复：Tooltip 直接使用排序后的数据源，索引正确对应
+        // ★★★ 渲染单个项目的目标差值图表（修复版）★★★
+        // 修复1：Tooltip 数据错位 —— 通过当前悬停的柱子索引正确获取数据
+        // 修复2：图表显示太小 —— 移除 grid 的 width 属性，只使用 left/right 控制位置
         // ============================================================
         function renderProjectTargetChart(projectId, projectData) {
             var domId = 'chart_' + projectId + '_targetDiff';
@@ -2200,36 +2200,41 @@
                 return;
             }
 
-            var highMax = hasHigh ? Math.max.apply(null, highItems.map(function(i) { return i.actual; })) : 0;
-            var lowMax = hasLow ? Math.max.apply(null, lowItems.map(function(i) { return i.actual; })) : 0;
-
-            var leftMax = Math.max(highMax * 1.2, 1);
-            var rightMax = Math.max(lowMax * 1.2, 1);
-
+            // ★★★ 修复2：移除 width 属性，只使用 left/right ★★★
+            // 计算每个 grid 的 left/right 百分比
             var totalItems = items.length;
             var highCount = highItems.length;
             var lowCount = lowItems.length;
 
-            var leftWidth = hasHigh ? (highCount / totalItems * 50 + 10) : 0;
-            var rightWidth = hasLow ? (lowCount / totalItems * 50 + 10) : 0;
-            if (hasHigh && leftWidth < 15) leftWidth = 15;
-            if (hasLow && rightWidth < 15) rightWidth = 15;
-            if (hasHigh && !hasLow) { leftWidth = 80;
+            // 分配宽度比例
+            var leftWidth = hasHigh ? (highCount / totalItems * 80 + 10) : 0;
+            var rightWidth = hasLow ? (lowCount / totalItems * 80 + 10) : 0;
+            if (hasHigh && leftWidth < 20) leftWidth = 20;
+            if (hasLow && rightWidth < 20) rightWidth = 20;
+            if (hasHigh && !hasLow) { leftWidth = 92;
                 rightWidth = 0; }
             if (!hasHigh && hasLow) { leftWidth = 0;
-                rightWidth = 80; }
+                rightWidth = 92; }
+
+            // 确保总和不超过 100%
+            var totalWidth = leftWidth + rightWidth;
+            if (totalWidth > 96) {
+                var scale = 96 / totalWidth;
+                leftWidth = leftWidth * scale;
+                rightWidth = rightWidth * scale;
+            }
 
             var grids = [];
             var xAxes = [];
+            var yAxes = [];
 
             // 左侧网格（高分组）
             if (hasHigh) {
                 grids.push({
-                    left: '4%',
-                    right: (100 - leftWidth - 2) + '%',
+                    left: '3%',
+                    right: (100 - leftWidth - 1) + '%',
                     top: '8%',
                     bottom: '22%',
-                    width: leftWidth + '%',
                     containLabel: true
                 });
                 xAxes.push({
@@ -2245,17 +2250,34 @@
                     },
                     splitLine: { show: false }
                 });
+                // 左侧Y轴（主，高分）
+                var highMax = Math.max.apply(null, highItems.map(function(i) { return i.actual; }));
+                var leftMax = Math.max(highMax * 1.2, 1);
+                yAxes.push({
+                    type: 'value',
+                    name: '高分 (>150)',
+                    nameTextStyle: { fontSize: 10, color: '#1f77b4' },
+                    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                    min: 0,
+                    max: leftMax,
+                    gridIndex: 0,
+                    position: 'left',
+                    axisLabel: {
+                        fontSize: 9,
+                        color: '#1f77b4',
+                        formatter: function(value) { return value.toFixed(0); }
+                    }
+                });
             }
 
             // 右侧网格（低分组）
             if (hasLow) {
                 var rightGridIndex = hasHigh ? 1 : 0;
                 grids.push({
-                    left: (hasHigh ? leftWidth + 2 : 4) + '%',
-                    right: '4%',
+                    left: (hasHigh ? leftWidth + 1 : 3) + '%',
+                    right: '3%',
                     top: '8%',
                     bottom: '22%',
-                    width: rightWidth + '%',
                     containLabel: true
                 });
                 xAxes.push({
@@ -2271,9 +2293,27 @@
                     },
                     splitLine: { show: false }
                 });
+                // 右侧Y轴（副，低分）
+                var lowMax = Math.max.apply(null, lowItems.map(function(i) { return i.actual; }));
+                var rightMax = Math.max(lowMax * 1.2, 1);
+                yAxes.push({
+                    type: 'value',
+                    name: '低分 (≤150)',
+                    nameTextStyle: { fontSize: 10, color: '#ff7f0e' },
+                    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+                    min: 0,
+                    max: rightMax,
+                    gridIndex: rightGridIndex,
+                    position: 'right',
+                    axisLabel: {
+                        fontSize: 9,
+                        color: '#ff7f0e',
+                        formatter: function(value) { return value.toFixed(0); }
+                    }
+                });
             }
 
-            // 补齐占位grid（防止ECharts报错）
+            // 补齐占位 grid 和 axis（防止 ECharts 报错）
             if (hasHigh && !hasLow) {
                 grids.push({
                     left: '85%',
@@ -2291,6 +2331,18 @@
                     axisLine: { show: false },
                     axisTick: { show: false },
                     splitLine: { show: false }
+                });
+                yAxes.push({
+                    type: 'value',
+                    name: '',
+                    splitLine: { show: false },
+                    min: 0,
+                    max: 1,
+                    gridIndex: 1,
+                    position: 'right',
+                    axisLabel: { show: false },
+                    axisLine: { show: false },
+                    axisTick: { show: false }
                 });
             }
             if (!hasHigh && hasLow) {
@@ -2311,65 +2363,6 @@
                     axisTick: { show: false },
                     splitLine: { show: false }
                 });
-            }
-
-            var yAxes = [];
-
-            // 左侧Y轴（主，高分）
-            if (hasHigh) {
-                yAxes.push({
-                    type: 'value',
-                    name: '高分 (>150)',
-                    nameTextStyle: { fontSize: 10, color: '#1f77b4' },
-                    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                    min: 0,
-                    max: leftMax,
-                    gridIndex: 0,
-                    position: 'left',
-                    axisLabel: {
-                        fontSize: 9,
-                        color: '#1f77b4',
-                        formatter: function(value) { return value.toFixed(0); }
-                    }
-                });
-            }
-
-            // 右侧Y轴（副，低分）
-            if (hasLow) {
-                var rightGridIndex = hasHigh ? 1 : 0;
-                yAxes.push({
-                    type: 'value',
-                    name: '低分 (≤150)',
-                    nameTextStyle: { fontSize: 10, color: '#ff7f0e' },
-                    splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
-                    min: 0,
-                    max: rightMax,
-                    gridIndex: rightGridIndex,
-                    position: 'right',
-                    axisLabel: {
-                        fontSize: 9,
-                        color: '#ff7f0e',
-                        formatter: function(value) { return value.toFixed(0); }
-                    }
-                });
-            }
-
-            // 补齐占位Y轴
-            if (hasHigh && !hasLow) {
-                yAxes.push({
-                    type: 'value',
-                    name: '',
-                    splitLine: { show: false },
-                    min: 0,
-                    max: 1,
-                    gridIndex: 1,
-                    position: 'right',
-                    axisLabel: { show: false },
-                    axisLine: { show: false },
-                    axisTick: { show: false }
-                });
-            }
-            if (!hasHigh && hasLow) {
                 yAxes.push({
                     type: 'value',
                     name: '',
@@ -2511,14 +2504,15 @@
                 });
             }
 
-            // ★★★ 修复 Tooltip ★★★
-            // 直接使用排序分组后的 highItems 和 lowItems，索引完全对应
-            // 不再使用 chartData 引用，避免索引错位
+            // ★★★ 修复1：Tooltip 完全基于 params 中的数据索引 ★★★
+            // 通过 dataIndex 直接从 highItems/lowItems 中获取数据，确保一一对应
             var tooltipData = {
                 highItems: highItems,
                 lowItems: lowItems,
                 hasHigh: hasHigh,
-                hasLow: hasLow
+                hasLow: hasLow,
+                highGridIndex: 0,
+                lowGridIndex: hasHigh ? 1 : 0
             };
 
             var legendData = ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'];
@@ -2530,61 +2524,48 @@
                     formatter: function(params) {
                         if (!params || params.length === 0) return '';
 
-                        // 获取 xAxisIndex 判断分组
-                        var xAxisIdx = 0;
+                        // 获取第一个有效参数的 dataIndex 和 gridIndex
+                        var dataIdx = -1;
+                        var gridIdx = -1;
                         for (var p = 0; p < params.length; p++) {
-                            if (params[p].xAxisIndex !== undefined) {
-                                xAxisIdx = params[p].xAxisIndex;
+                            if (params[p].dataIndex !== undefined && params[p].gridIndex !== undefined) {
+                                dataIdx = params[p].dataIndex;
+                                gridIdx = params[p].gridIndex;
                                 break;
                             }
                         }
+                        if (dataIdx === -1 || gridIdx === -1) return '';
 
-                        var idx = 0;
-                        for (var p = 0; p < params.length; p++) {
-                            if (params[p].dataIndex !== undefined) {
-                                idx = params[p].dataIndex;
-                                break;
+                        // 根据 gridIndex 决定使用哪个数据源
+                        var item = null;
+                        if (gridIdx === tooltipData.highGridIndex && tooltipData.hasHigh) {
+                            if (dataIdx < tooltipData.highItems.length) {
+                                item = tooltipData.highItems[dataIdx];
+                            }
+                        } else if (gridIdx === tooltipData.lowGridIndex && tooltipData.hasLow) {
+                            if (dataIdx < tooltipData.lowItems.length) {
+                                item = tooltipData.lowItems[dataIdx];
                             }
                         }
 
-                        var name = '';
-                        var actual = 0;
-                        var target = 0;
-
-                        // 根据分组获取数据
-                        if (xAxisIdx === 0 && tooltipData.hasHigh && idx < tooltipData.highItems.length) {
-                            var item = tooltipData.highItems[idx];
-                            name = item.category;
-                            actual = item.actual;
-                            target = item.target;
-                        } else if (xAxisIdx === 1 && tooltipData.hasLow && idx < tooltipData.lowItems.length) {
-                            var item = tooltipData.lowItems[idx];
-                            name = item.category;
-                            actual = item.actual;
-                            target = item.target;
-                        }
-
-                        // 如果还没有取到数据，尝试从所有项中查找（兜底）
-                        if (!name) {
+                        // 兜底：如果上述匹配失败，尝试从所有项中查找
+                        if (!item) {
                             var allItems = tooltipData.highItems.concat(tooltipData.lowItems);
-                            if (idx < allItems.length) {
-                                var item = allItems[idx];
-                                name = item.category;
-                                actual = item.actual;
-                                target = item.target;
+                            if (dataIdx < allItems.length) {
+                                item = allItems[dataIdx];
                             }
                         }
 
-                        if (!name) return '';
+                        if (!item) return '';
 
-                        var diff = actual - target;
+                        var diff = item.actual - item.target;
                         var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
                         var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
                         var diffColor = diff <= 0 ? '#10b981' : '#ef4444';
 
-                        return '<strong>' + name + '</strong><br/>' +
-                            '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
-                            '目标分值: <strong>' + target.toFixed(1) + '</strong><br/>' +
+                        return '<strong>' + item.category + '</strong><br/>' +
+                            '实际分值: <strong>' + item.actual.toFixed(1) + '</strong><br/>' +
+                            '目标分值: <strong>' + item.target.toFixed(1) + '</strong><br/>' +
                             '差值: <strong style="color:' + diffColor + ';">' + diffDisplay +
                             '</strong><br/>' +
                             '状态: ' + status;
@@ -3027,7 +3008,6 @@
                     right: right + '%',
                     top: '6%',
                     bottom: '10%',
-                    width: (colWidth - 3) + '%',
                     containLabel: true
                 });
 
