@@ -2049,8 +2049,8 @@
 
         // ============================================================
         // ★★★ 渲染单个项目的目标差值图表（修复版）★★★
-        // 修复1：Tooltip 数据错位 —— 通过当前悬停的柱子索引正确获取数据
-        // 修复2：图表显示太小 —— 移除 grid 的 width 属性，只使用 left/right 控制位置
+        // 修复1：Tooltip 数据错位 —— 在数据中嵌入自定义属性，Tooltip直接读取
+        // 修复2：窗口没占满 —— 使用 left 和 right 精确控制，不留间隙
         // ============================================================
         function renderProjectTargetChart(projectId, projectData) {
             var domId = 'chart_' + projectId + '_targetDiff';
@@ -2200,39 +2200,43 @@
                 return;
             }
 
-            // ★★★ 修复2：移除 width 属性，只使用 left/right ★★★
-            // 计算每个 grid 的 left/right 百分比
+            // ============================================================
+            // ★★★ 修复2：窗口占满 - 重新计算 Grid 布局 ★★★
+            // ============================================================
             var totalItems = items.length;
             var highCount = highItems.length;
             var lowCount = lowItems.length;
 
-            // 分配宽度比例
-            var leftWidth = hasHigh ? (highCount / totalItems * 80 + 10) : 0;
-            var rightWidth = hasLow ? (lowCount / totalItems * 80 + 10) : 0;
-            if (hasHigh && leftWidth < 20) leftWidth = 20;
-            if (hasLow && rightWidth < 20) rightWidth = 20;
-            if (hasHigh && !hasLow) { leftWidth = 92;
+            // 分配宽度比例（左右各留3%边距，中间总宽度94%）
+            var leftWidth = hasHigh ? (highCount / totalItems * 88 + 6) : 0;
+            var rightWidth = hasLow ? (lowCount / totalItems * 88 + 6) : 0;
+            if (hasHigh && leftWidth < 18) leftWidth = 18;
+            if (hasLow && rightWidth < 18) rightWidth = 18;
+            if (hasHigh && !hasLow) { leftWidth = 94;
                 rightWidth = 0; }
             if (!hasHigh && hasLow) { leftWidth = 0;
-                rightWidth = 92; }
+                rightWidth = 94; }
 
-            // 确保总和不超过 100%
+            // 确保总和不超过94%
             var totalWidth = leftWidth + rightWidth;
-            if (totalWidth > 96) {
-                var scale = 96 / totalWidth;
+            if (totalWidth > 94) {
+                var scale = 94 / totalWidth;
                 leftWidth = leftWidth * scale;
                 rightWidth = rightWidth * scale;
             }
 
+            // 左侧网格：从 3% 开始，宽度为 leftWidth%
+            // 右侧网格：紧挨着左侧网格，宽度为 rightWidth%
             var grids = [];
             var xAxes = [];
             var yAxes = [];
 
             // 左侧网格（高分组）
             if (hasHigh) {
+                var leftGridIndex = grids.length;
                 grids.push({
                     left: '3%',
-                    right: (100 - leftWidth - 1) + '%',
+                    width: leftWidth + '%',
                     top: '8%',
                     bottom: '22%',
                     containLabel: true
@@ -2240,7 +2244,7 @@
                 xAxes.push({
                     type: 'category',
                     data: highItems.map(function(item) { return item.category; }),
-                    gridIndex: 0,
+                    gridIndex: leftGridIndex,
                     axisLabel: {
                         rotate: 30,
                         fontSize: 8,
@@ -2250,7 +2254,7 @@
                     },
                     splitLine: { show: false }
                 });
-                // 左侧Y轴（主，高分）
+                // 左侧Y轴
                 var highMax = Math.max.apply(null, highItems.map(function(i) { return i.actual; }));
                 var leftMax = Math.max(highMax * 1.2, 1);
                 yAxes.push({
@@ -2260,7 +2264,7 @@
                     splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
                     min: 0,
                     max: leftMax,
-                    gridIndex: 0,
+                    gridIndex: leftGridIndex,
                     position: 'left',
                     axisLabel: {
                         fontSize: 9,
@@ -2272,10 +2276,11 @@
 
             // 右侧网格（低分组）
             if (hasLow) {
-                var rightGridIndex = hasHigh ? 1 : 0;
+                var rightGridIndex = grids.length;
+                var leftPos = hasHigh ? (3 + leftWidth) : 3;
                 grids.push({
-                    left: (hasHigh ? leftWidth + 1 : 3) + '%',
-                    right: '3%',
+                    left: leftPos + '%',
+                    width: rightWidth + '%',
                     top: '8%',
                     bottom: '22%',
                     containLabel: true
@@ -2293,7 +2298,7 @@
                     },
                     splitLine: { show: false }
                 });
-                // 右侧Y轴（副，低分）
+                // 右侧Y轴
                 var lowMax = Math.max.apply(null, lowItems.map(function(i) { return i.actual; }));
                 var rightMax = Math.max(lowMax * 1.2, 1);
                 yAxes.push({
@@ -2313,83 +2318,28 @@
                 });
             }
 
-            // 补齐占位 grid 和 axis（防止 ECharts 报错）
-            if (hasHigh && !hasLow) {
-                grids.push({
-                    left: '85%',
-                    right: '2%',
-                    top: '8%',
-                    bottom: '22%',
-                    width: '0%',
-                    containLabel: true
-                });
-                xAxes.push({
-                    type: 'category',
-                    data: [''],
-                    gridIndex: 1,
-                    axisLabel: { show: false },
-                    axisLine: { show: false },
-                    axisTick: { show: false },
-                    splitLine: { show: false }
-                });
-                yAxes.push({
-                    type: 'value',
-                    name: '',
-                    splitLine: { show: false },
-                    min: 0,
-                    max: 1,
-                    gridIndex: 1,
-                    position: 'right',
-                    axisLabel: { show: false },
-                    axisLine: { show: false },
-                    axisTick: { show: false }
-                });
-            }
-            if (!hasHigh && hasLow) {
-                grids.push({
-                    left: '2%',
-                    right: '85%',
-                    top: '8%',
-                    bottom: '22%',
-                    width: '0%',
-                    containLabel: true
-                });
-                xAxes.push({
-                    type: 'category',
-                    data: [''],
-                    gridIndex: 0,
-                    axisLabel: { show: false },
-                    axisLine: { show: false },
-                    axisTick: { show: false },
-                    splitLine: { show: false }
-                });
-                yAxes.push({
-                    type: 'value',
-                    name: '',
-                    splitLine: { show: false },
-                    min: 0,
-                    max: 1,
-                    gridIndex: 0,
-                    position: 'left',
-                    axisLabel: { show: false },
-                    axisLine: { show: false },
-                    axisTick: { show: false }
-                });
-            }
-
+            // ============================================================
+            // ★★★ 修复1：构建系列数据，嵌入自定义属性 ★★★
+            // ============================================================
             var series = [];
 
-            // ===== 高分组系列 =====
+            // 高分组系列（3个系列：达标、超标、目标值）
             if (hasHigh) {
-                var highGreen = highItems.map(function(item) { return item.green; });
-                var highRed = highItems.map(function(item) { return item.red; });
-                var highTarget = highItems.map(function(item) { return item.target; });
-
+                // 达标部分
                 series.push({
                     name: '✅ 达标部分 (≤目标)',
                     type: 'bar',
                     stack: 'total_high',
-                    data: highGreen,
+                    data: highItems.map(function(item, idx) {
+                        return {
+                            value: item.green,
+                            _category: item.category,
+                            _actual: item.actual,
+                            _target: item.target,
+                            _groupId: 'high',
+                            _idx: idx
+                        };
+                    }),
                     barWidth: '30%',
                     itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
                     label: {
@@ -2403,11 +2353,21 @@
                     xAxisIndex: 0,
                     yAxisIndex: 0
                 });
+                // 超标部分
                 series.push({
                     name: '❌ 超标部分 (>目标)',
                     type: 'bar',
                     stack: 'total_high',
-                    data: highRed,
+                    data: highItems.map(function(item, idx) {
+                        return {
+                            value: item.red,
+                            _category: item.category,
+                            _actual: item.actual,
+                            _target: item.target,
+                            _groupId: 'high',
+                            _idx: idx
+                        };
+                    }),
                     barWidth: '30%',
                     itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
                     label: {
@@ -2421,10 +2381,20 @@
                     xAxisIndex: 0,
                     yAxisIndex: 0
                 });
+                // 目标值
                 series.push({
                     name: '目标值',
                     type: 'bar',
-                    data: highTarget,
+                    data: highItems.map(function(item, idx) {
+                        return {
+                            value: item.target,
+                            _category: item.category,
+                            _actual: item.actual,
+                            _target: item.target,
+                            _groupId: 'high',
+                            _idx: idx
+                        };
+                    }),
                     barWidth: '30%',
                     itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
                     label: {
@@ -2440,20 +2410,25 @@
                 });
             }
 
-            // ===== 低分组系列 =====
+            // 低分组系列（3个系列：达标、超标、目标值）
             if (hasLow) {
-                var lowGreen = lowItems.map(function(item) { return item.green; });
-                var lowRed = lowItems.map(function(item) { return item.red; });
-                var lowTarget = lowItems.map(function(item) { return item.target; });
-
-                var lowGridIndex = hasHigh ? 1 : 0;
-                var lowYAxisIndex = hasHigh ? 1 : 0;
-
+                var lowGridIdx = hasHigh ? 1 : 0;
+                var lowYIdx = hasHigh ? 1 : 0;
+                // 达标部分
                 series.push({
                     name: '✅ 达标部分 (≤目标)',
                     type: 'bar',
                     stack: 'total_low',
-                    data: lowGreen,
+                    data: lowItems.map(function(item, idx) {
+                        return {
+                            value: item.green,
+                            _category: item.category,
+                            _actual: item.actual,
+                            _target: item.target,
+                            _groupId: 'low',
+                            _idx: idx
+                        };
+                    }),
                     barWidth: '30%',
                     itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
                     label: {
@@ -2464,14 +2439,24 @@
                         color: 'white',
                         formatter: function(params) { return params.value > 0 ? params.value.toFixed(1) : ''; }
                     },
-                    xAxisIndex: lowGridIndex,
-                    yAxisIndex: lowYAxisIndex
+                    xAxisIndex: lowGridIdx,
+                    yAxisIndex: lowYIdx
                 });
+                // 超标部分
                 series.push({
                     name: '❌ 超标部分 (>目标)',
                     type: 'bar',
                     stack: 'total_low',
-                    data: lowRed,
+                    data: lowItems.map(function(item, idx) {
+                        return {
+                            value: item.red,
+                            _category: item.category,
+                            _actual: item.actual,
+                            _target: item.target,
+                            _groupId: 'low',
+                            _idx: idx
+                        };
+                    }),
                     barWidth: '30%',
                     itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
                     label: {
@@ -2482,13 +2467,23 @@
                         color: 'white',
                         formatter: function(params) { return params.value > 0 ? '+' + params.value.toFixed(1) : ''; }
                     },
-                    xAxisIndex: lowGridIndex,
-                    yAxisIndex: lowYAxisIndex
+                    xAxisIndex: lowGridIdx,
+                    yAxisIndex: lowYIdx
                 });
+                // 目标值
                 series.push({
                     name: '目标值',
                     type: 'bar',
-                    data: lowTarget,
+                    data: lowItems.map(function(item, idx) {
+                        return {
+                            value: item.target,
+                            _category: item.category,
+                            _actual: item.actual,
+                            _target: item.target,
+                            _groupId: 'low',
+                            _idx: idx
+                        };
+                    }),
                     barWidth: '30%',
                     itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
                     label: {
@@ -2499,24 +2494,16 @@
                         color: '#64748b',
                         formatter: function(params) { return '🎯 ' + params.value.toFixed(1); }
                     },
-                    xAxisIndex: lowGridIndex,
-                    yAxisIndex: lowYAxisIndex
+                    xAxisIndex: lowGridIdx,
+                    yAxisIndex: lowYIdx
                 });
             }
-
-            // ★★★ 修复1：Tooltip 完全基于 params 中的数据索引 ★★★
-            // 通过 dataIndex 直接从 highItems/lowItems 中获取数据，确保一一对应
-            var tooltipData = {
-                highItems: highItems,
-                lowItems: lowItems,
-                hasHigh: hasHigh,
-                hasLow: hasLow,
-                highGridIndex: 0,
-                lowGridIndex: hasHigh ? 1 : 0
-            };
 
             var legendData = ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'];
 
+            // ============================================================
+            // ★★★ 修复1：Tooltip 直接从 params 中读取自定义数据 ★★★
+            // ============================================================
             chart.setOption({
                 tooltip: {
                     trigger: 'axis',
@@ -2524,48 +2511,52 @@
                     formatter: function(params) {
                         if (!params || params.length === 0) return '';
 
-                        // 获取第一个有效参数的 dataIndex 和 gridIndex
-                        var dataIdx = -1;
-                        var gridIdx = -1;
-                        for (var p = 0; p < params.length; p++) {
-                            if (params[p].dataIndex !== undefined && params[p].gridIndex !== undefined) {
-                                dataIdx = params[p].dataIndex;
-                                gridIdx = params[p].gridIndex;
+                        // 遍历 params，找到第一个带有自定义数据 _category 的参数
+                        var targetData = null;
+                        for (var i = 0; i < params.length; i++) {
+                            var p = params[i];
+                            if (p.data && p.data._category) {
+                                targetData = p.data;
                                 break;
                             }
                         }
-                        if (dataIdx === -1 || gridIdx === -1) return '';
 
-                        // 根据 gridIndex 决定使用哪个数据源
-                        var item = null;
-                        if (gridIdx === tooltipData.highGridIndex && tooltipData.hasHigh) {
-                            if (dataIdx < tooltipData.highItems.length) {
-                                item = tooltipData.highItems[dataIdx];
+                        if (!targetData) {
+                            // 兜底：如果没有自定义数据，尝试从第一个参数获取
+                            var p0 = params[0];
+                            if (p0 && p0.dataIndex !== undefined) {
+                                // 尝试从 items 中获取
+                                var allItems = highItems.concat(lowItems);
+                                if (p0.dataIndex < allItems.length) {
+                                    var fallbackItem = allItems[p0.dataIndex];
+                                    if (fallbackItem) {
+                                        var diff = fallbackItem.actual - fallbackItem.target;
+                                        var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
+                                        var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
+                                        var diffColor = diff <= 0 ? '#10b981' : '#ef4444';
+                                        return '<strong>' + fallbackItem.category + '</strong><br/>' +
+                                            '实际分值: <strong>' + fallbackItem.actual.toFixed(1) + '</strong><br/>' +
+                                            '目标分值: <strong>' + fallbackItem.target.toFixed(1) + '</strong><br/>' +
+                                            '差值: <strong style="color:' + diffColor + ';">' + diffDisplay +
+                                            '</strong><br/>' +
+                                            '状态: ' + status;
+                                    }
+                                }
                             }
-                        } else if (gridIdx === tooltipData.lowGridIndex && tooltipData.hasLow) {
-                            if (dataIdx < tooltipData.lowItems.length) {
-                                item = tooltipData.lowItems[dataIdx];
-                            }
+                            return '';
                         }
 
-                        // 兜底：如果上述匹配失败，尝试从所有项中查找
-                        if (!item) {
-                            var allItems = tooltipData.highItems.concat(tooltipData.lowItems);
-                            if (dataIdx < allItems.length) {
-                                item = allItems[dataIdx];
-                            }
-                        }
-
-                        if (!item) return '';
-
-                        var diff = item.actual - item.target;
+                        var name = targetData._category;
+                        var actual = targetData._actual;
+                        var targetVal = targetData._target;
+                        var diff = actual - targetVal;
                         var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
                         var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
                         var diffColor = diff <= 0 ? '#10b981' : '#ef4444';
 
-                        return '<strong>' + item.category + '</strong><br/>' +
-                            '实际分值: <strong>' + item.actual.toFixed(1) + '</strong><br/>' +
-                            '目标分值: <strong>' + item.target.toFixed(1) + '</strong><br/>' +
+                        return '<strong>' + name + '</strong><br/>' +
+                            '实际分值: <strong>' + actual.toFixed(1) + '</strong><br/>' +
+                            '目标分值: <strong>' + targetVal.toFixed(1) + '</strong><br/>' +
                             '差值: <strong style="color:' + diffColor + ';">' + diffDisplay +
                             '</strong><br/>' +
                             '状态: ' + status;
@@ -2605,8 +2596,6 @@
 
         // ============================================================
         // ★★★ 渲染单个项目的其他图表 ★★★
-        // ★★★ 主单状态和重要度分布：按 allCenters 过滤 ★★★
-        // ★★★ 1/5和4/5超期统计、甘特图、DI点数：按 personMap 过滤 ★★★
         // ============================================================
         function renderProjectChartsData(projectId, projectData) {
             // ★★★ 1/5 超期统计（只统计超期 > 3天，且只统计 personMap 中的人员）★★★
@@ -2900,9 +2889,6 @@
 
         // ============================================================
         // ★★★ 超期统计图（只统计 personMap 中的人员）★★★
-        // statusValue: '1/5' 或 '4/5'
-        // checkOverdue: true 表示只统计超期 > 3天；false 表示不区分超期
-        // ★★★ 修复：每列使用自己的 max 值 ★★★
         // ============================================================
         function renderOverdueChart(domId, projectData, statusValue, checkOverdue) {
             var dom = document.getElementById(domId);
@@ -2948,7 +2934,6 @@
             var ownerMap = {};
             for (var i = 0; i < filteredItems.length; i++) {
                 var d = filteredItems[i];
-                // 已经过滤了 personMap，这里直接使用
                 if (!ownerMap[d.owner]) {
                     ownerMap[d.owner] = 0;
                 }
@@ -2962,25 +2947,23 @@
                 return b.count - a.count;
             });
 
-            // 每列最多10人，计算需要几列
+            // 每列最多10人
             var PER_COLUMN = 10;
             var totalPeople = ownerList.length;
             var numColumns = Math.ceil(totalPeople / PER_COLUMN);
 
-            // 分配数据到各列（补齐到10人，保持高度一致）
+            // 分配数据到各列
             var columnData = [];
             for (var col = 0; col < numColumns; col++) {
                 var start = col * PER_COLUMN;
                 var end = Math.min(start + PER_COLUMN, totalPeople);
                 var colItems = ownerList.slice(start, end);
-                // 补齐到10人（添加空占位）
                 while (colItems.length < PER_COLUMN) {
                     colItems.push({ name: '', count: 0 });
                 }
                 columnData.push(colItems);
             }
 
-            // 构建 ECharts 多网格配置
             var grids = [];
             var xAxes = [];
             var yAxes = [];
@@ -2993,7 +2976,6 @@
                 var names = colItems.map(function(item) { return item.name || ''; });
                 var counts = colItems.map(function(item) { return item.count || 0; });
 
-                // ★★★ 计算当前列的最大值 ★★★
                 var colMax = 0;
                 for (var i = 0; i < colItems.length; i++) {
                     if (colItems[i].count > colMax) colMax = colItems[i].count;
@@ -3017,7 +2999,6 @@
                     name: '',
                     splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
                     show: false,
-                    // ★★★ 使用当前列自己的最大值 ★★★
                     max: colMax * 1.2
                 });
 
@@ -3057,7 +3038,6 @@
             var chart = echarts.init(dom);
             chartInstances[domId] = chart;
 
-            var statusLabel = statusValue === '1/5' ? '1/5' : '4/5';
             var titleSuffix = checkOverdue ? '（>3天）' : '（人名+数量）';
 
             chart.setOption({
@@ -3200,7 +3180,7 @@
         }
 
         // ============================================================
-        // ★★★ 问题DI点数 TOP10（人员汇总）- 修正名称 ★★★
+        // ★★★ 问题DI点数 TOP10（人员汇总）★★★
         // ============================================================
         function renderScoreChart(domId, data) {
             var dom = document.getElementById(domId);
