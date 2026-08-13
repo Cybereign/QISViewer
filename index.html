@@ -2051,6 +2051,7 @@
         // ★★★ 渲染单个项目的目标差值图表 ★★★
         // 双Y轴方案：左侧主轴显示高分(>150)，右侧副轴显示低分(≤150)
         // 两个轴高度相同但刻度不同，所有柱状条都能清晰显示
+        // ★★★ Tooltip 已修复：正确对应高分组和低分组数据 ★★★
         // ============================================================
         function renderProjectTargetChart(projectId, projectData) {
             var domId = 'chart_' + projectId + '_targetDiff';
@@ -2164,7 +2165,7 @@
                 delete chartInstances[domId];
             }
 
-            // ★★★ 按实际值降序排列，150为分界线 ★★★
+            // 按150分界线分组
             var THRESHOLD = 150;
             var items = categories.map(function(cat, idx) {
                 return {
@@ -2179,11 +2180,9 @@
             // 按实际值降序排列
             items.sort(function(a, b) { return b.actual - a.actual; });
 
-            // 分组成：高分(>150) 和 低分(≤150)
             var highItems = items.filter(function(item) { return item.actual > THRESHOLD; });
             var lowItems = items.filter(function(item) { return item.actual <= THRESHOLD; });
 
-            // 合并：高分组在前，低分组在后
             var sortedItems = highItems.concat(lowItems);
 
             var sortedCategories = sortedItems.map(function(item) { return item.category; });
@@ -2195,184 +2194,23 @@
             var chart = echarts.init(dom);
             chartInstances[domId] = chart;
 
-            // 计算左右两侧的最大值
             var highMax = highItems.length > 0 ? Math.max.apply(null, highItems.map(function(i) { return i.actual; })) : 0;
             var lowMax = lowItems.length > 0 ? Math.max.apply(null, lowItems.map(function(i) { return i.actual; })) : 0;
-            var globalMax = Math.max(highMax, lowMax, 1);
 
-            // 分别计算两侧的Y轴最大值（留20%余量）
             var leftMax = Math.max(highMax * 1.2, 1);
             var rightMax = Math.max(lowMax * 1.2, 1);
 
-            // 工具提示数据
-            var chartData = {
-                categories: sortedCategories.slice(),
-                actualValues: sortedActual.slice(),
-                targetValues: sortedTarget.slice(),
-                greenParts: sortedGreen.slice(),
-                redParts: sortedRed.slice(),
-                highCount: highItems.length
-            };
-
-            // 构建系列数据：高分组用左侧主轴，低分组用右侧副轴
-            var series = [];
-
-            // 高分组系列（左侧主轴）
-            if (highItems.length > 0) {
-                var highGreen = highItems.map(function(item) { return item.green; });
-                var highRed = highItems.map(function(item) { return item.red; });
-                var highActual = highItems.map(function(item) { return item.actual; });
-
-                // 达标部分（绿色）
-                series.push({
-                    name: '✅ 达标部分 (≤目标)',
-                    type: 'bar',
-                    stack: 'total_high',
-                    data: highGreen,
-                    barWidth: '30%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
-                    label: {
-                        show: true,
-                        position: 'inside',
-                        fontSize: 8,
-                        fontWeight: 600,
-                        color: 'white',
-                        formatter: function(params) { return params.value > 0 ? params.value.toFixed(1) : ''; }
-                    },
-                    xAxisIndex: 0,
-                    yAxisIndex: 0
-                });
-                // 超标部分（红色）
-                series.push({
-                    name: '❌ 超标部分 (>目标)',
-                    type: 'bar',
-                    stack: 'total_high',
-                    data: highRed,
-                    barWidth: '30%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
-                    label: {
-                        show: true,
-                        position: 'inside',
-                        fontSize: 8,
-                        fontWeight: 600,
-                        color: 'white',
-                        formatter: function(params) { return params.value > 0 ? '+' + params.value.toFixed(1) :
-                            ''; }
-                    },
-                    xAxisIndex: 0,
-                    yAxisIndex: 0
-                });
-                // 目标值
-                var highTarget = highItems.map(function(item) { return item.target; });
-                series.push({
-                    name: '目标值',
-                    type: 'bar',
-                    data: highTarget,
-                    barWidth: '30%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
-                    label: {
-                        show: true,
-                        position: 'top',
-                        fontSize: 7,
-                        fontWeight: 600,
-                        color: '#64748b',
-                        formatter: function(params) { return '🎯 ' + params.value.toFixed(1); }
-                    },
-                    xAxisIndex: 0,
-                    yAxisIndex: 0
-                });
-            }
-
-            // 低分组系列（右侧副轴）
-            if (lowItems.length > 0) {
-                var lowGreen = lowItems.map(function(item) { return item.green; });
-                var lowRed = lowItems.map(function(item) { return item.red; });
-                var lowActual = lowItems.map(function(item) { return item.actual; });
-
-                // 达标部分（绿色）
-                series.push({
-                    name: '✅ 达标部分 (≤目标)',
-                    type: 'bar',
-                    stack: 'total_low',
-                    data: lowGreen,
-                    barWidth: '30%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
-                    label: {
-                        show: true,
-                        position: 'inside',
-                        fontSize: 8,
-                        fontWeight: 600,
-                        color: 'white',
-                        formatter: function(params) { return params.value > 0 ? params.value.toFixed(1) : ''; }
-                    },
-                    xAxisIndex: 1,
-                    yAxisIndex: 1
-                });
-                // 超标部分（红色）
-                series.push({
-                    name: '❌ 超标部分 (>目标)',
-                    type: 'bar',
-                    stack: 'total_low',
-                    data: lowRed,
-                    barWidth: '30%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
-                    label: {
-                        show: true,
-                        position: 'inside',
-                        fontSize: 8,
-                        fontWeight: 600,
-                        color: 'white',
-                        formatter: function(params) { return params.value > 0 ? '+' + params.value.toFixed(1) :
-                            ''; }
-                    },
-                    xAxisIndex: 1,
-                    yAxisIndex: 1
-                });
-                // 目标值
-                var lowTarget = lowItems.map(function(item) { return item.target; });
-                series.push({
-                    name: '目标值',
-                    type: 'bar',
-                    data: lowTarget,
-                    barWidth: '30%',
-                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
-                    label: {
-                        show: true,
-                        position: 'top',
-                        fontSize: 7,
-                        fontWeight: 600,
-                        color: '#64748b',
-                        formatter: function(params) { return '🎯 ' + params.value.toFixed(1); }
-                    },
-                    xAxisIndex: 1,
-                    yAxisIndex: 1
-                });
-            }
-
-            // ★★★ 构建 X 轴分类数据 ★★★
-            var leftCategories = highItems.map(function(item) { return item.category; });
-            var rightCategories = lowItems.map(function(item) { return item.category; });
-
-            // 如果没有高分或低分数据，用占位
-            if (leftCategories.length === 0) leftCategories = ['(无高分数据)'];
-            if (rightCategories.length === 0) rightCategories = ['(无低分数据)'];
-
-            // ★★★ 构建网格：两个 grid 左右并排 ★★★
             var hasHigh = highItems.length > 0;
             var hasLow = lowItems.length > 0;
 
-            // 计算左右宽度比例
             var totalItems = sortedCategories.length;
             var highCount = highItems.length;
             var lowCount = lowItems.length;
 
-            // 如果没有高分或低分，则占满整个图表
             var leftWidth = hasHigh ? (highCount / totalItems * 50 + 10) : 0;
             var rightWidth = hasLow ? (lowCount / totalItems * 50 + 10) : 0;
-            // 确保最小宽度
             if (hasHigh && leftWidth < 15) leftWidth = 15;
             if (hasLow && rightWidth < 15) rightWidth = 15;
-            // 如果只有一侧有数据，让它占满
             if (hasHigh && !hasLow) { leftWidth = 80;
                 rightWidth = 0; }
             if (!hasHigh && hasLow) { leftWidth = 0;
@@ -2381,7 +2219,6 @@
             var grids = [];
             var xAxes = [];
 
-            // 左侧网格（高分组）
             if (hasHigh) {
                 grids.push({
                     left: '4%',
@@ -2393,7 +2230,7 @@
                 });
                 xAxes.push({
                     type: 'category',
-                    data: leftCategories,
+                    data: highItems.map(function(item) { return item.category; }),
                     gridIndex: 0,
                     axisLabel: {
                         rotate: 30,
@@ -2406,7 +2243,6 @@
                 });
             }
 
-            // 右侧网格（低分组）
             if (hasLow) {
                 var rightGridIndex = hasHigh ? 1 : 0;
                 grids.push({
@@ -2419,7 +2255,7 @@
                 });
                 xAxes.push({
                     type: 'category',
-                    data: rightCategories,
+                    data: lowItems.map(function(item) { return item.category; }),
                     gridIndex: rightGridIndex,
                     axisLabel: {
                         rotate: 30,
@@ -2432,9 +2268,7 @@
                 });
             }
 
-            // 如果只有一侧有数据，仍需要两个 grid 但其中一个为空
             if (hasHigh && !hasLow) {
-                // 右侧占位grid（不显示）
                 grids.push({
                     left: '85%',
                     right: '2%',
@@ -2454,7 +2288,6 @@
                 });
             }
             if (!hasHigh && hasLow) {
-                // 左侧占位grid（不显示）
                 grids.push({
                     left: '2%',
                     right: '85%',
@@ -2474,7 +2307,6 @@
                 });
             }
 
-            // 如果没有数据
             if (!hasHigh && !hasLow) {
                 chart.setOption({
                     title: {
@@ -2487,11 +2319,9 @@
                 return;
             }
 
-            // ★★★ 构建 Y 轴 ★★★
             var yAxes = [];
             var yAxisIndex = 0;
 
-            // 左侧Y轴（主，高分）
             if (hasHigh) {
                 yAxes.push({
                     type: 'value',
@@ -2511,7 +2341,6 @@
                 yAxisIndex++;
             }
 
-            // 右侧Y轴（副，低分）
             if (hasLow) {
                 var rightGridIndex = hasHigh ? 1 : 0;
                 yAxes.push({
@@ -2531,7 +2360,6 @@
                 });
             }
 
-            // 如果只有一侧有数据，补充另一侧的Y轴占位
             if (hasHigh && !hasLow) {
                 yAxes.push({
                     type: 'value',
@@ -2561,48 +2389,183 @@
                 });
             }
 
-            // ★★★ 设置图例 ★★★
-            var legendData = ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'];
-            if (hasHigh && hasLow) {
-                legendData.push('高分 (>150)');
-                legendData.push('低分 (≤150)');
+            var series = [];
+
+            // 高分组系列
+            if (hasHigh) {
+                var highGreen = highItems.map(function(item) { return item.green; });
+                var highRed = highItems.map(function(item) { return item.red; });
+                var highTarget = highItems.map(function(item) { return item.target; });
+
+                series.push({
+                    name: '✅ 达标部分 (≤目标)',
+                    type: 'bar',
+                    stack: 'total_high',
+                    data: highGreen,
+                    barWidth: '30%',
+                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) { return params.value > 0 ? params.value.toFixed(1) : ''; }
+                    },
+                    xAxisIndex: 0,
+                    yAxisIndex: 0
+                });
+                series.push({
+                    name: '❌ 超标部分 (>目标)',
+                    type: 'bar',
+                    stack: 'total_high',
+                    data: highRed,
+                    barWidth: '30%',
+                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) { return params.value > 0 ? '+' + params.value.toFixed(1) : ''; }
+                    },
+                    xAxisIndex: 0,
+                    yAxisIndex: 0
+                });
+                series.push({
+                    name: '目标值',
+                    type: 'bar',
+                    data: highTarget,
+                    barWidth: '30%',
+                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 7,
+                        fontWeight: 600,
+                        color: '#64748b',
+                        formatter: function(params) { return '🎯 ' + params.value.toFixed(1); }
+                    },
+                    xAxisIndex: 0,
+                    yAxisIndex: 0
+                });
             }
 
-            // ★★★ 组装并设置图表 ★★★
-            var option = {
+            // 低分组系列
+            if (hasLow) {
+                var lowGreen = lowItems.map(function(item) { return item.green; });
+                var lowRed = lowItems.map(function(item) { return item.red; });
+                var lowTarget = lowItems.map(function(item) { return item.target; });
+
+                var lowGridIndex = hasHigh ? 1 : 0;
+                var lowYAxisIndex = hasHigh ? 1 : 0;
+
+                series.push({
+                    name: '✅ 达标部分 (≤目标)',
+                    type: 'bar',
+                    stack: 'total_low',
+                    data: lowGreen,
+                    barWidth: '30%',
+                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#10b981' },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) { return params.value > 0 ? params.value.toFixed(1) : ''; }
+                    },
+                    xAxisIndex: lowGridIndex,
+                    yAxisIndex: lowYAxisIndex
+                });
+                series.push({
+                    name: '❌ 超标部分 (>目标)',
+                    type: 'bar',
+                    stack: 'total_low',
+                    data: lowRed,
+                    barWidth: '30%',
+                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#ef4444' },
+                    label: {
+                        show: true,
+                        position: 'inside',
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: 'white',
+                        formatter: function(params) { return params.value > 0 ? '+' + params.value.toFixed(1) : ''; }
+                    },
+                    xAxisIndex: lowGridIndex,
+                    yAxisIndex: lowYAxisIndex
+                });
+                series.push({
+                    name: '目标值',
+                    type: 'bar',
+                    data: lowTarget,
+                    barWidth: '30%',
+                    itemStyle: { borderRadius: [3, 3, 0, 0], color: '#94a3b8', opacity: 0.3 },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        fontSize: 7,
+                        fontWeight: 600,
+                        color: '#64748b',
+                        formatter: function(params) { return '🎯 ' + params.value.toFixed(1); }
+                    },
+                    xAxisIndex: lowGridIndex,
+                    yAxisIndex: lowYAxisIndex
+                });
+            }
+
+            // ★★★ 修复 Tooltip：通过 xAxisIndex 判断分组 ★★★
+            var legendData = ['✅ 达标部分 (≤目标)', '❌ 超标部分 (>目标)', '目标值'];
+
+            chart.setOption({
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: { type: 'shadow' },
                     formatter: function(params) {
-                        // 从params中获取数据
-                        var idx = 0;
-                        var isHigh = true;
+                        if (!params || params.length === 0) return '';
+
+                        // 获取第一个有效参数的 xAxisIndex 来判断分组
+                        var xAxisIdx = 0;
                         for (var p = 0; p < params.length; p++) {
                             if (params[p].dataIndex !== undefined) {
-                                idx = params[p].dataIndex;
-                                // 判断是高分还是低分
-                                if (params[p].seriesName === '目标值' || params[p].seriesName.indexOf('达标') !== -
-                                    1 || params[p].seriesName.indexOf('超标') !== -1) {
-                                    // 尝试从系列名判断
-                                    if (params[p].xAxisIndex === 1) isHigh = false;
-                                }
+                                xAxisIdx = params[p].xAxisIndex || 0;
                                 break;
                             }
                         }
-                        // 获取对应的分类名
-                        var name = '';
-                        if (isHigh && highItems.length > 0) {
-                            name = highItems[idx] ? highItems[idx].category : '';
-                        } else if (!isHigh && lowItems.length > 0) {
-                            name = lowItems[idx] ? lowItems[idx].category : '';
-                        }
-                        // 如果没有找到，从categories中取
-                        if (!name && sortedCategories[idx]) {
-                            name = sortedCategories[idx];
+
+                        // 判断是高分还是低分
+                        var isHigh = (xAxisIdx === 0 && hasHigh);
+                        var idx = 0;
+                        for (var p = 0; p < params.length; p++) {
+                            if (params[p].dataIndex !== undefined) {
+                                idx = params[p].dataIndex;
+                                break;
+                            }
                         }
 
-                        var actual = chartData.actualValues[idx] || 0;
-                        var target = chartData.targetValues[idx] || 0;
+                        var name = '';
+                        var actual = 0;
+                        var target = 0;
+
+                        if (isHigh && highItems.length > 0 && idx < highItems.length) {
+                            var item = highItems[idx];
+                            name = item.category;
+                            actual = item.actual;
+                            target = item.target;
+                        } else if (!isHigh && lowItems.length > 0 && idx < lowItems.length) {
+                            var item2 = lowItems[idx];
+                            name = item2.category;
+                            actual = item2.actual;
+                            target = item2.target;
+                        } else if (sortedCategories.length > 0 && idx < sortedCategories.length) {
+                            // 兜底逻辑
+                            name = sortedCategories[idx] || '';
+                            actual = sortedActual[idx] || 0;
+                            target = sortedTarget[idx] || 0;
+                        }
+
                         var diff = actual - target;
                         var status = diff <= 0 ? '✅ 达标' : '❌ 不达标';
                         var diffDisplay = diff > 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
@@ -2627,9 +2590,7 @@
                 xAxis: xAxes,
                 yAxis: yAxes,
                 series: series
-            };
-
-            chart.setOption(option);
+            });
 
             setTimeout(function() {
                 if (chart && !chart.isDisposed()) {
